@@ -1,0 +1,6 @@
+{
+  "name": "Copa 2026",
+  "description": "Super Trunfo Copa 2026 card game with football stars.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
