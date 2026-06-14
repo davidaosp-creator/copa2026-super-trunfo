@@ -62,6 +62,15 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 
+// Firebase Realtime Database
+import com.google.firebase.FirebaseApp
+import com.google.firebase.FirebaseOptions
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+
 // Game Screens / Tabs
 enum class GameTab {
     JOGAR, RANKING, PERFIL
@@ -231,6 +240,15 @@ val PLAYERS_DECK = listOf(
 // Game ViewModel
 class GameViewModel(private val repository: GameRepository) : ViewModel() {
 
+    // Firebase Realtime Database variables
+    private var rtdbRoomRef: com.google.firebase.database.DatabaseReference? = null
+    private var rtdbListener: com.google.firebase.database.ValueEventListener? = null
+    var isOnlineCreator by mutableStateOf(false)
+        private set
+    var isMyTurn by mutableStateOf(true)
+    var isWaitingForOpponent by mutableStateOf(false)
+        private set
+
     // User Profile flow from Room Database
     val userProfile: StateFlow<UserProfile> = repository.userProfile
         .map { it ?: UserProfile(username = "Jogador", points = 1420, wins = 12, losses = 8) }
@@ -286,8 +304,7 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
     fun selectPlayMode(mode: PlayMode): String {
         if (mode == PlayMode.MATCHMAKING) {
             val code = "ST-${Random.nextInt(100000, 999999)}"
-            roomCode = code
-            startMatchmaking()
+            createAndPublishOnlineRoom(code)
             return code
         } else if (mode == PlayMode.CPU_GAME) {
             dealCards()
@@ -299,31 +316,191 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
     }
 
     fun joinRoomWithCode(code: String) {
-        roomCode = code
-        startMatchmaking()
+        joinOnlineRoom(code)
     }
 
-    private fun startMatchmaking() {
+    private fun createAndPublishOnlineRoom(code: String) {
+        roomCode = code
+        isOnlineCreator = true
+        isWaitingForOpponent = true
         playMode = PlayMode.MATCHMAKING
         searchProgress = 0f
         opponentName = ""
-        viewModelScope.launch {
-            val names = listOf("DavidAmigo", "JeanPierre_FR", "Lucas_ST", "MartaFan", "NeymarJR_Jr", "Diego_ARG", "HarryFan_ENG", "Artur_FC", "BrunoPlay")
-            val selectedOpponent = names.random()
-            // Animate matchmaking search progress representing friend joining
-            for (step in 1..35) {
-                delay(110)
-                searchProgress = step / 35f
+        isMyTurn = true
+
+        val rtdb = com.google.firebase.database.FirebaseDatabase.getInstance("https://super-trunfo-da-copa-default-rtdb.firebaseio.com")
+        val roomRef = rtdb.getReference("rooms").child(code)
+        rtdbRoomRef = roomRef
+
+        // Initial deck deal
+        val list = PLAYERS_DECK.shuffled()
+        val cCard = list[0]
+        val oCard = list[1]
+
+        val roomData = mapOf(
+            "roomCode" to code,
+            "creatorName" to userProfile.value.username,
+            "joineeName" to "",
+            "creatorCardId" to cCard.id,
+            "joineeCardId" to oCard.id,
+            "selectedStat" to "",
+            "turn" to "CREATOR",
+            "status" to "WAITING",
+            "lastAction" to System.currentTimeMillis()
+        )
+
+        roomRef.setValue(roomData)
+        listenToRoomChanges(roomRef)
+    }
+
+    private fun joinOnlineRoom(code: String) {
+        roomCode = code
+        isOnlineCreator = false
+        isWaitingForOpponent = false
+        playMode = PlayMode.MATCHMAKING
+        searchProgress = 0.5f
+        opponentName = ""
+        isMyTurn = false
+
+        val rtdb = com.google.firebase.database.FirebaseDatabase.getInstance("https://super-trunfo-da-copa-default-rtdb.firebaseio.com")
+        val roomRef = rtdb.getReference("rooms").child(code)
+        rtdbRoomRef = roomRef
+
+        roomRef.get().addOnSuccessListener { snapshot ->
+            if (snapshot.exists()) {
+                val status = snapshot.child("status").value as? String ?: "WAITING"
+                if (status == "WAITING" || status == "PLAYING") {
+                    val updates = mapOf(
+                        "joineeName" to userProfile.value.username,
+                        "status" to "PLAYING",
+                        "lastAction" to System.currentTimeMillis()
+                    )
+                    roomRef.updateChildren(updates).addOnSuccessListener {
+                        listenToRoomChanges(roomRef)
+                    }
+                } else {
+                    dealCards()
+                    playMode = PlayMode.CPU_GAME
+                }
+            } else {
+                dealCards()
+                playMode = PlayMode.CPU_GAME
             }
-            opponentName = selectedOpponent
-            delay(600)
+        }.addOnFailureListener {
             dealCards()
-            playMode = PlayMode.ONLINE_GAME
+            playMode = PlayMode.CPU_GAME
+        }
+    }
+
+    private fun listenToRoomChanges(ref: com.google.firebase.database.DatabaseReference) {
+        rtdbListener?.let { ref.removeEventListener(it) }
+
+        val listener = object : com.google.firebase.database.ValueEventListener {
+            override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                if (!snapshot.exists()) return
+
+                val creatorNameRaw = snapshot.child("creatorName").value as? String ?: ""
+                val joineeNameRaw = snapshot.child("joineeName").value as? String ?: ""
+                val statusRaw = snapshot.child("status").value as? String ?: "WAITING"
+                val creatorCardId = snapshot.child("creatorCardId").value as? String ?: ""
+                val joineeCardId = snapshot.child("joineeCardId").value as? String ?: ""
+                val selectedStatRaw = snapshot.child("selectedStat").value as? String ?: ""
+                val turnRaw = snapshot.child("turn").value as? String ?: "CREATOR"
+
+                if (isOnlineCreator) {
+                    opponentName = joineeNameRaw
+                    isMyTurn = turnRaw == "CREATOR"
+                } else {
+                    opponentName = creatorNameRaw
+                    isMyTurn = turnRaw == "JOINEE"
+                }
+
+                val creatorCard = PLAYERS_DECK.find { it.id == creatorCardId } ?: PLAYERS_DECK[0]
+                val joineeCard = PLAYERS_DECK.find { it.id == joineeCardId } ?: PLAYERS_DECK[1]
+
+                if (isOnlineCreator) {
+                    playerCard = creatorCard
+                    opponentCard = joineeCard
+                } else {
+                    playerCard = joineeCard
+                    opponentCard = creatorCard
+                }
+
+                if (statusRaw == "PLAYING") {
+                    searchProgress = 1.0f
+                    playMode = PlayMode.ONLINE_GAME
+                    isWaitingForOpponent = false
+                }
+
+                if (selectedStatRaw.isNotEmpty() && !isComparing) {
+                    val playerVal = getStatValue(playerCard, selectedStatRaw)
+                    val opponentVal = getStatValue(opponentCard, selectedStatRaw)
+
+                    selectedStatName = selectedStatRaw
+                    isComparing = true
+
+                    viewModelScope.launch {
+                        delay(1500)
+
+                        val result = when {
+                            playerCard.isGold && !opponentCard.isGold -> MatchResult.WIN
+                            opponentCard.isGold && !playerCard.isGold -> MatchResult.LOSS
+                            playerVal > opponentVal -> MatchResult.WIN
+                            playerVal < opponentVal -> MatchResult.LOSS
+                            else -> if (Random.nextBoolean()) MatchResult.WIN else MatchResult.LOSS
+                        }
+                        matchResult = result
+
+                        if (result == MatchResult.WIN) {
+                            repository.recordWin()
+                        } else {
+                            repository.recordLoss()
+                        }
+
+                        delay(2800)
+                        isComparing = false
+                        matchResult = null
+                        selectedStatName = ""
+
+                        if (isOnlineCreator) {
+                            val nextTurn = if (result == MatchResult.WIN) "CREATOR" else "JOINEE"
+                            val list = PLAYERS_DECK.shuffled()
+                            val nextCreatorCard = list[0]
+                            val nextJoineeCard = list[1]
+
+                            ref.updateChildren(
+                                mapOf(
+                                    "creatorCardId" to nextCreatorCard.id,
+                                    "joineeCardId" to nextJoineeCard.id,
+                                    "selectedStat" to "",
+                                    "turn" to nextTurn,
+                                    "lastAction" to System.currentTimeMillis()
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+
+            override fun onCancelled(error: com.google.firebase.database.DatabaseError) {}
+        }
+
+        rtdbListener = listener
+        ref.addValueEventListener(listener)
+    }
+
+    private fun getStatValue(card: PlayerCard, statName: String): Int {
+        return when (statName) {
+            "ATAQUE" -> card.attack
+            "DEFESA" -> card.defense
+            "TÉCNICA" -> card.technique
+            "ALTURA" -> card.heightInCm
+            "VELOCIDADE" -> card.speed
+            else -> card.technique
         }
     }
 
     private fun dealCards() {
-        // Shuffle and deal 2 different cards
         val list = PLAYERS_DECK.shuffled()
         playerCard = list[0]
         opponentCard = list[1]
@@ -331,36 +508,37 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
 
     fun selectStat(statName: String, playerValue: Int, opponentValue: Int) {
         if (isComparing) return
-        selectedStatName = statName
-        isComparing = true
+        if (playMode == PlayMode.ONLINE_GAME) {
+            if (!isMyTurn) return
+            rtdbRoomRef?.child("selectedStat")?.setValue(statName)
+        } else {
+            selectedStatName = statName
+            isComparing = true
 
-        viewModelScope.launch {
-            // Simulated dramatic build-up confrontation spinner
-            delay(1500)
+            viewModelScope.launch {
+                delay(1500)
 
-            // Calculate winner (incorporating Golden/Super Trunfo cards automatic win)
-            val result = when {
-                playerCard.isGold && !opponentCard.isGold -> MatchResult.WIN
-                opponentCard.isGold && !playerCard.isGold -> MatchResult.LOSS
-                playerValue > opponentValue -> MatchResult.WIN
-                playerValue < opponentValue -> MatchResult.LOSS
-                else -> if (Random.nextBoolean()) MatchResult.WIN else MatchResult.LOSS // resolve ties
+                val result = when {
+                    playerCard.isGold && !opponentCard.isGold -> MatchResult.WIN
+                    opponentCard.isGold && !playerCard.isGold -> MatchResult.LOSS
+                    playerValue > opponentValue -> MatchResult.WIN
+                    playerValue < opponentValue -> MatchResult.LOSS
+                    else -> if (Random.nextBoolean()) MatchResult.WIN else MatchResult.LOSS
+                }
+                matchResult = result
+
+                if (result == MatchResult.WIN) {
+                    repository.recordWin()
+                } else {
+                    repository.recordLoss()
+                }
+
+                delay(2800)
+                isComparing = false
+                matchResult = null
+                selectedStatName = ""
+                dealCards()
             }
-            matchResult = result
-
-            // Record to persistent DB
-            if (result == MatchResult.WIN) {
-                repository.recordWin()
-            } else {
-                repository.recordLoss()
-            }
-
-            // Keep result visible for another 3 seconds, then deal new ones and clearoverlay
-            delay(2800)
-            isComparing = false
-            matchResult = null
-            selectedStatName = ""
-            dealCards()
         }
     }
 
@@ -383,6 +561,19 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
         isComparing = false
         matchResult = null
         selectedStatName = ""
+
+        rtdbListener?.let { rtdbRoomRef?.removeEventListener(it) }
+        rtdbListener = null
+        rtdbRoomRef?.child("status")?.setValue("FINISHED")
+        rtdbRoomRef = null
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        rtdbListener?.let { rtdbRoomRef?.removeEventListener(it) }
+        rtdbListener = null
+        rtdbRoomRef?.child("status")?.setValue("FINISHED")
+        rtdbRoomRef = null
     }
 }
 
@@ -401,6 +592,20 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        try {
+            if (com.google.firebase.FirebaseApp.getApps(this).isEmpty()) {
+                val options = com.google.firebase.FirebaseOptions.Builder()
+                    .setApplicationId("1:299941114533:android:ebf6c4c65bad6c90a443e7")
+                    .setDatabaseUrl("https://super-trunfo-da-copa-default-rtdb.firebaseio.com")
+                    .setProjectId("super-trunfo-da-copa")
+                    .setApiKey("AIzaSyDummyApiKeyForRealtimeDatabase12345")
+                    .build()
+                com.google.firebase.FirebaseApp.initializeApp(this, options)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
 
         val database = AppDatabase.getDatabase(applicationContext)
         val repository = GameRepository(database.userDao())
@@ -788,6 +993,7 @@ fun JogarScreen(viewModel: GameViewModel, profile: UserProfile) {
                         opponentCard = viewModel.opponentCard,
                         isOnline = viewModel.playMode == PlayMode.ONLINE_GAME,
                         opponentName = if (viewModel.playMode == PlayMode.ONLINE_GAME) viewModel.opponentName else "CPU 🤖",
+                        isMyTurn = if (viewModel.playMode == PlayMode.ONLINE_GAME) viewModel.isMyTurn else true,
                         onSelectStat = { stat, valP, valO -> viewModel.selectStat(stat, valP, valO) },
                         onExit = { viewModel.exitToMenu() }
                     )
@@ -1164,6 +1370,7 @@ fun CardBattleScreen(
     opponentCard: PlayerCard,
     isOnline: Boolean,
     opponentName: String,
+    isMyTurn: Boolean = true,
     onSelectStat: (statName: String, playerVal: Int, opponentVal: Int) -> Unit,
     onExit: () -> Unit
 ) {
@@ -1211,6 +1418,17 @@ fun CardBattleScreen(
             }
         }
 
+        if (isOnline) {
+            Text(
+                text = if (isMyTurn) "✓ SUA VEZ! ESCOLHA UM ATRIBUTO DO SEU CARD" else "⏳ AGUARDANDO PALPITE DO ADVERSÁRIO...",
+                color = if (isMyTurn) Color(0xFF4ADE80) else Color(0xFFFB923C),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+        }
+
         // Scrollable column just in case sizes are cramped on older devices
         Box(
             modifier = Modifier
@@ -1227,6 +1445,7 @@ fun CardBattleScreen(
                 item {
                     InteractivePlayerCard(
                         card = playerCard,
+                        isMyTurn = isMyTurn,
                         onSelectStat = { stat, value ->
                             val oppValue = when (stat) {
                                 "ATAQUE" -> opponentCard.attack
@@ -1282,6 +1501,7 @@ fun CardBattleScreen(
 @Composable
 fun InteractivePlayerCard(
     card: PlayerCard,
+    isMyTurn: Boolean = true,
     onSelectStat: (statName: String, value: Int) -> Unit
 ) {
     Card(
@@ -1405,8 +1625,8 @@ fun InteractivePlayerCard(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    "TOQUE PARA JOGAR:",
-                    color = Color(0xFF9A9078),
+                    text = if (isMyTurn) "TOQUE PARA JOGAR:" else "CO-PILOTO: SUA VEZ NO PRÓXIMO TURNO!",
+                    color = if (isMyTurn) Color(0xFF9A9078) else Color(0xFFFB923C),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
@@ -1417,7 +1637,7 @@ fun InteractivePlayerCard(
                     label = "ATAQUE",
                     value = card.attack,
                     icon = Icons.Default.PlayArrow,
-                    onClick = { onSelectStat("ATAQUE", card.attack) },
+                    onClick = { if (isMyTurn) onSelectStat("ATAQUE", card.attack) },
                     modifier = Modifier.testTag("stat_row_attack")
                 )
 
@@ -1425,7 +1645,7 @@ fun InteractivePlayerCard(
                     label = "DEFESA",
                     value = card.defense,
                     icon = Icons.Default.Build,
-                    onClick = { onSelectStat("DEFESA", card.defense) },
+                    onClick = { if (isMyTurn) onSelectStat("DEFESA", card.defense) },
                     modifier = Modifier.testTag("stat_row_defense")
                 )
 
@@ -1433,7 +1653,7 @@ fun InteractivePlayerCard(
                     label = "TÉCNICA",
                     value = card.technique,
                     icon = Icons.Default.Star,
-                    onClick = { onSelectStat("TÉCNICA", card.technique) },
+                    onClick = { if (isMyTurn) onSelectStat("TÉCNICA", card.technique) },
                     modifier = Modifier.testTag("stat_row_technique")
                 )
 
@@ -1442,7 +1662,7 @@ fun InteractivePlayerCard(
                     value = card.heightInCm,
                     customValueString = "%.2f m".format(card.heightInCm / 100.0),
                     icon = Icons.Default.Person,
-                    onClick = { onSelectStat("ALTURA", card.heightInCm) },
+                    onClick = { if (isMyTurn) onSelectStat("ALTURA", card.heightInCm) },
                     modifier = Modifier.testTag("stat_row_height")
                 )
 
@@ -1450,7 +1670,7 @@ fun InteractivePlayerCard(
                     label = "VELOCIDADE",
                     value = card.speed,
                     icon = Icons.Default.ArrowForward,
-                    onClick = { onSelectStat("VELOCIDADE", card.speed) },
+                    onClick = { if (isMyTurn) onSelectStat("VELOCIDADE", card.speed) },
                     modifier = Modifier.testTag("stat_row_speed")
                 )
             }
