@@ -578,9 +578,13 @@ fun PlayerAvatarDrawing(card: PlayerCard, modifier: Modifier = Modifier) {
             .background(bgBrush)
     ) {
         // Player illustrated sports card artwork
-        androidx.compose.foundation.Image(
-            painter = painterResource(id = imageResId),
+        val githubRawUrl = "https://raw.githubusercontent.com/davidaosp-creator/copa2026-super-trunfo/main/app/src/main/res/drawable/img_card_${card.id}.jpg"
+
+        AsyncImage(
+            model = githubRawUrl,
             contentDescription = card.name,
+            placeholder = painterResource(id = imageResId),
+            error = painterResource(id = imageResId),
             contentScale = ContentScale.Fit, // Entire player illustration is fully fitted inside card bounds
             modifier = Modifier.fillMaxSize()
         )
