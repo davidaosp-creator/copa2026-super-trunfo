@@ -8,8 +8,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -34,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -282,6 +281,34 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
     var matchResult by mutableStateOf<MatchResult?>(null)
         private set
 
+    // Best of 5 round wins
+    var playerRoundWins by mutableStateOf(0)
+    var opponentRoundWins by mutableStateOf(0)
+
+    // Consecutive wins for fire effect
+    var consecutiveWins by mutableStateOf(0)
+
+    // Opponent reaction state
+    var opponentReaction by mutableStateOf("")
+    var opponentReactionTime by mutableStateOf(0L)
+
+    fun startNewMatch() {
+        playerRoundWins = 0
+        opponentRoundWins = 0
+        consecutiveWins = 0
+        opponentReaction = ""
+        opponentReactionTime = 0L
+        dealCards()
+    }
+
+    fun sendReaction(emoji: String) {
+        val ref = rtdbRoomRef ?: return
+        val path = if (isOnlineCreator) "creatorReaction" else "joineeReaction"
+        val timePath = if (isOnlineCreator) "creatorReactionTime" else "joineeReactionTime"
+        ref.child(path).setValue(emoji)
+        ref.child(timePath).setValue(System.currentTimeMillis())
+    }
+
     // Matchmaking variables
     var searchProgress by mutableStateOf(0f)
         private set
@@ -304,6 +331,7 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
     }
 
     fun selectPlayMode(mode: PlayMode): String {
+        startNewMatch()
         if (mode == PlayMode.MATCHMAKING) {
             val code = "ST-${Random.nextInt(100000, 999999)}"
             createAndPublishOnlineRoom(code)
@@ -356,6 +384,7 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
     }
 
     private fun joinOnlineRoom(code: String) {
+        startNewMatch()
         roomCode = code
         isOnlineCreator = false
         isWaitingForOpponent = false
@@ -409,12 +438,21 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
                 val selectedStatRaw = snapshot.child("selectedStat").value as? String ?: ""
                 val turnRaw = snapshot.child("turn").value as? String ?: "CREATOR"
 
+                val creatorReactionRaw = snapshot.child("creatorReaction").value as? String ?: ""
+                val joineeReactionRaw = snapshot.child("joineeReaction").value as? String ?: ""
+                val creatorReactionTimeRaw = snapshot.child("creatorReactionTime").value as? Long ?: 0L
+                val joineeReactionTimeRaw = snapshot.child("joineeReactionTime").value as? Long ?: 0L
+
                 if (isOnlineCreator) {
                     opponentName = joineeNameRaw
                     isMyTurn = turnRaw == "CREATOR"
+                    opponentReaction = joineeReactionRaw
+                    opponentReactionTime = joineeReactionTimeRaw
                 } else {
                     opponentName = creatorNameRaw
                     isMyTurn = turnRaw == "JOINEE"
+                    opponentReaction = creatorReactionRaw
+                    opponentReactionTime = creatorReactionTimeRaw
                 }
 
                 val creatorCard = PLAYERS_DECK.find { it.id == creatorCardId } ?: PLAYERS_DECK[0]
@@ -445,6 +483,9 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
                         delay(1500)
 
                         val result = when {
+                            selectedStatRaw == "TIMEOUT" -> {
+                                if (isMyTurn) MatchResult.LOSS else MatchResult.WIN
+                            }
                             playerCard.isGold && !opponentCard.isGold -> MatchResult.WIN
                             opponentCard.isGold && !playerCard.isGold -> MatchResult.LOSS
                             playerVal > opponentVal -> MatchResult.WIN
@@ -455,8 +496,12 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
 
                         if (result == MatchResult.WIN) {
                             repository.recordWin()
+                            playerRoundWins += 1
+                            consecutiveWins += 1
                         } else {
                             repository.recordLoss()
+                            opponentRoundWins += 1
+                            consecutiveWins = 0
                         }
 
                         delay(2800)
@@ -521,6 +566,7 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
                 delay(1500)
 
                 val result = when {
+                    statName == "TIMEOUT" -> MatchResult.LOSS
                     playerCard.isGold && !opponentCard.isGold -> MatchResult.WIN
                     opponentCard.isGold && !playerCard.isGold -> MatchResult.LOSS
                     playerValue > opponentValue -> MatchResult.WIN
@@ -531,15 +577,21 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
 
                 if (result == MatchResult.WIN) {
                     repository.recordWin()
+                    playerRoundWins += 1
+                    consecutiveWins += 1
                 } else {
                     repository.recordLoss()
+                    opponentRoundWins += 1
+                    consecutiveWins = 0
                 }
 
                 delay(2800)
                 isComparing = false
                 matchResult = null
                 selectedStatName = ""
-                dealCards()
+                if (playerRoundWins < 3 && opponentRoundWins < 3) {
+                    dealCards()
+                }
             }
         }
     }
@@ -615,59 +667,65 @@ class MainActivity : ComponentActivity() {
         setContent {
             val gameViewModel: GameViewModel = viewModel(factory = GameViewModelFactory(repository))
             val profileState by gameViewModel.userProfile.collectAsState()
+            var showHomeScreen by remember { mutableStateOf(true) }
 
             val context = androidx.compose.ui.platform.LocalContext.current
             androidx.compose.runtime.LaunchedEffect(Unit) {
                 val activity = context as? android.app.Activity
                 activity?.intent?.data?.getQueryParameter("room")?.let { code ->
                     if (code.isNotEmpty() && gameViewModel.playMode == PlayMode.NONE) {
+                        showHomeScreen = false
                         gameViewModel.joinRoomWithCode(code)
                     }
                 }
             }
 
             CopaTrunfoTheme {
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    bottomBar = {
-                        if (gameViewModel.playMode == PlayMode.NONE) {
-                            BottomNavBar(
-                                currentTab = gameViewModel.currentTab,
-                                onTabSelected = { gameViewModel.selectTab(it) }
-                            )
-                        }
-                    },
-                    containerColor = Color(0xFF081425)
-                ) { innerPadding ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding)
-                    ) {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            // Header
-                            HeaderBar(profileState.points)
+                if (showHomeScreen) {
+                    HomeScreen(onStartGame = { showHomeScreen = false })
+                } else {
+                    Scaffold(
+                        modifier = Modifier.fillMaxSize(),
+                        bottomBar = {
+                            if (gameViewModel.playMode == PlayMode.NONE) {
+                                BottomNavBar(
+                                    currentTab = gameViewModel.currentTab,
+                                    onTabSelected = { gameViewModel.selectTab(it) }
+                                )
+                            }
+                        },
+                        containerColor = Color(0xFF081425)
+                    ) { innerPadding ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(innerPadding)
+                        ) {
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                // Header
+                                HeaderBar(profileState.points)
 
-                            // Main body based on selected tab
-                            when (gameViewModel.currentTab) {
-                                GameTab.JOGAR -> {
-                                    JogarScreen(
-                                        viewModel = gameViewModel,
-                                        profile = profileState
-                                    )
-                                }
-                                GameTab.RANKING -> {
-                                    RankingScreen(
-                                        userPoints = profileState.points,
-                                        username = profileState.username
-                                    )
-                                }
-                                GameTab.PERFIL -> {
-                                    PerfilScreen(
-                                        profile = profileState,
-                                        onSaveName = { gameViewModel.saveUsername(it) },
-                                        onReset = { gameViewModel.resetProfile() }
-                                    )
+                                // Main body based on selected tab
+                                when (gameViewModel.currentTab) {
+                                    GameTab.JOGAR -> {
+                                        JogarScreen(
+                                            viewModel = gameViewModel,
+                                            profile = profileState
+                                        )
+                                    }
+                                    GameTab.RANKING -> {
+                                        RankingScreen(
+                                            userPoints = profileState.points,
+                                            username = profileState.username
+                                        )
+                                    }
+                                    GameTab.PERFIL -> {
+                                        PerfilScreen(
+                                            profile = profileState,
+                                            onSaveName = { gameViewModel.saveUsername(it) },
+                                            onReset = { gameViewModel.resetProfile() }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -956,6 +1014,151 @@ fun shareInviteLink(context: android.content.Context, roomCode: String) {
 // ---------------- JOGAR TAB SCREENS ----------------
 
 @Composable
+fun HomeScreen(onStartGame: () -> Unit) {
+    val bgBrush = Brush.verticalGradient(
+        colors = listOf(Color(0xFF1A472A), Color(0xFF000000))
+    )
+    val infiniteTransition = rememberInfiniteTransition(label = "stars_anim")
+    val alpha1 by infiniteTransition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "star_alpha_1"
+    )
+    val alpha2 by infiniteTransition.animateFloat(
+        initialValue = 1.0f,
+        targetValue = 0.1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2200, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "star_alpha_2"
+    )
+    val alpha3 by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.9f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1800, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "star_alpha_3"
+    )
+    
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1.0f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = EaseInOut),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse_scale"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(bgBrush),
+        contentAlignment = Alignment.Center
+    ) {
+        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+            val width = size.width
+            val height = size.height
+            if (width > 0 && height > 0) {
+                val r1 = java.util.Random(42)
+                for (i in 0 until 18) {
+                    val x = r1.nextFloat() * width
+                    val y = r1.nextFloat() * height
+                    val sizeStar = r1.nextFloat() * 4f + 2f
+                    drawCircle(Color.White.copy(alpha = alpha1), radius = sizeStar, center = androidx.compose.ui.geometry.Offset(x, y))
+                }
+                val r2 = java.util.Random(99)
+                for (i in 0 until 18) {
+                    val x = r2.nextFloat() * width
+                    val y = r2.nextFloat() * height
+                    val sizeStar = r2.nextFloat() * 4f + 2f
+                    drawCircle(Color.White.copy(alpha = alpha2), radius = sizeStar, center = androidx.compose.ui.geometry.Offset(x, y))
+                }
+                val r3 = java.util.Random(13)
+                for (i in 0 until 12) {
+                    val x = r3.nextFloat() * width
+                    val y = r3.nextFloat() * height
+                    val sizeStar = r3.nextFloat() * 5f + 3f
+                    drawCircle(Color(0xFFFEF08A).copy(alpha = alpha3), radius = sizeStar, center = androidx.compose.ui.geometry.Offset(x, y))
+                }
+            }
+        }
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Star,
+                contentDescription = "Star Icon",
+                tint = Color(0xFFFACC15),
+                modifier = Modifier
+                    .size(80.dp)
+                    .padding(bottom = 16.dp)
+            )
+
+            Text(
+                text = "SUPER TRUNFO",
+                fontSize = 44.sp,
+                fontWeight = FontWeight.Black,
+                fontStyle = FontStyle.Italic,
+                fontFamily = FontFamily.SansSerif,
+                color = Color(0xFFFACC15),
+                letterSpacing = 1.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Text(
+                text = "Copa 2026",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                fontStyle = FontStyle.Normal,
+                fontFamily = FontFamily.SansSerif,
+                color = Color.White,
+                letterSpacing = 0.5.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 48.dp)
+            )
+
+            Button(
+                onClick = onStartGame,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF22C55E)),
+                shape = RoundedCornerShape(32.dp),
+                modifier = Modifier
+                    .graphicsLayer {
+                        scaleX = pulseScale
+                        scaleY = pulseScale
+                    }
+                    .height(64.dp)
+                    .width(220.dp)
+                    .testTag("start_game_button")
+            ) {
+                Text(
+                    text = "COMEÇAR",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White,
+                    letterSpacing = 1.5.sp
+                )
+            }
+        }
+    }
+}
+
+// ---------------- JOGAR TAB SCREENS ----------------
+
+@Composable
 fun JogarScreen(viewModel: GameViewModel, profile: UserProfile) {
     val context = LocalContext.current
     AnimatedContent(
@@ -991,6 +1194,7 @@ fun JogarScreen(viewModel: GameViewModel, profile: UserProfile) {
             PlayMode.CPU_GAME, PlayMode.ONLINE_GAME -> {
                 Box(modifier = Modifier.fillMaxSize()) {
                     CardBattleScreen(
+                        viewModel = viewModel,
                         playerCard = viewModel.playerCard,
                         opponentCard = viewModel.opponentCard,
                         isOnline = viewModel.playMode == PlayMode.ONLINE_GAME,
@@ -1024,9 +1228,8 @@ fun MenuSelection(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .padding(24.dp),
-        verticalArrangement = Arrangement.Top,
+        verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
@@ -1368,7 +1571,42 @@ fun MatchmakingScreen(
 
 // Active Match card battle setup
 @Composable
+fun ConfettiRain() {
+    val infiniteTransition = rememberInfiniteTransition(label = "confetti")
+    val progress by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "confetti_progress"
+    )
+    androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+        val random = java.util.Random(123)
+        val colors = listOf(Color.Red, Color.Green, Color.Blue, Color.Yellow, Color.Cyan, Color.Magenta, Color(0xFFF97316))
+        for (i in 0 until 60) {
+            val startX = random.nextFloat() * size.width
+            val speedY = random.nextFloat() * 0.5f + 0.5f
+            val startY = -50f
+            val currentY = (startY + (size.height + 100f) * progress * speedY) % (size.height + 100f)
+            val color = colors[random.nextInt(colors.size)]
+            val rectWidth = random.nextFloat() * 15f + 10f
+            val rectHeight = random.nextFloat() * 8f + 5f
+            val rotation = progress * 360f * (random.nextFloat() * 2f - 1f)
+
+            drawContext.canvas.save()
+            drawContext.canvas.translate(startX, currentY)
+            drawContext.canvas.rotate(rotation)
+            drawRect(color, size = androidx.compose.ui.geometry.Size(rectWidth, rectHeight))
+            drawContext.canvas.restore()
+        }
+    }
+}
+
+@Composable
 fun CardBattleScreen(
+    viewModel: GameViewModel,
     playerCard: PlayerCard,
     opponentCard: PlayerCard,
     isOnline: Boolean,
@@ -1377,125 +1615,379 @@ fun CardBattleScreen(
     onSelectStat: (statName: String, playerVal: Int, opponentVal: Int) -> Unit,
     onExit: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.SpaceBetween,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Option to leave
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = if (isOnline) "PARTIDA: MODO ONLINE" else "PARTIDA: VERSUS CPU",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF9A9078)
-            )
-
-            Row(
-                modifier = Modifier
-                    .clickable { onExit() }
-                    .padding(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Leave game",
-                    tint = Color(0xFFF87171),
-                    modifier = Modifier.size(16.dp)
-                )
-                Text(
-                    text = "DESISTIR",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFFF87171)
-                )
-            }
+    if (viewModel.playerRoundWins >= 3 || viewModel.opponentRoundWins >= 3) {
+        val won = viewModel.playerRoundWins >= 3
+        if (won) {
+            ConfettiRain()
         }
-
-        if (isOnline) {
-            Text(
-                text = if (isMyTurn) "✓ SUA VEZ! ESCOLHA UM ATRIBUTO DO SEU CARD" else "⏳ AGUARDANDO PALPITE DO ADVERSÁRIO...",
-                color = if (isMyTurn) Color(0xFF4ADE80) else Color(0xFFFB923C),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(vertical = 4.dp)
-            )
-        }
-
-        // Scrollable column just in case sizes are cramped on older devices
         Box(
             modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
+                .fillMaxSize()
+                .background(Color(0xFF081425))
+                .padding(24.dp),
             contentAlignment = Alignment.Center
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(vertical = 12.dp)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                // Player Card Section
-                item {
-                    InteractivePlayerCard(
-                        card = playerCard,
-                        isMyTurn = isMyTurn,
-                        onSelectStat = { stat, value ->
-                            val oppValue = when (stat) {
-                                "ATAQUE" -> opponentCard.attack
-                                "DEFESA" -> opponentCard.defense
-                                "TÉCNICA" -> opponentCard.technique
-                                "ALTURA" -> opponentCard.heightInCm
-                                "VELOCIDADE" -> opponentCard.speed
-                                else -> opponentCard.technique
-                            }
-                            onSelectStat(stat, value, oppValue)
-                        }
-                    )
-                }
+                Text(
+                    text = "FIM DE PARTIDA",
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFFFACC15),
+                    letterSpacing = 2.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
 
-                // VS circle in between
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .background(Color(0xFFFACC15), CircleShape)
-                                .border(2.dp, Color(0xFF081425), CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                "VS",
-                                color = Color(0xFF3C2F00),
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Black,
-                                fontStyle = FontStyle.Italic
-                            )
-                        }
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = if (won) "🏆 VOCÊ VENCEU A PARTIDA! 🏆" else "😔 EXPERIMENTE OUTRO PALPITE!",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (won) Color(0xFF4ADE80) else Color(0xFFF87171),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .background(Color(0xFF152031), RoundedCornerShape(12.dp))
+                        .border(2.dp, Color(0xFFFACC15), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("VOCÊ", color = Color(0xFFD8E3FB), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text("${viewModel.playerRoundWins}", color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Black)
+                    }
+                    Text("X", color = Color(0xFFFACC15), fontSize = 24.sp, fontWeight = FontWeight.Black)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(opponentName.uppercase(), color = Color(0xFFD8E3FB), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text("${viewModel.opponentRoundWins}", color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Black)
                     }
                 }
 
-                // Opponent Card Section
-                item {
-                    OpponentCardPlaceholder(
-                        card = opponentCard,
-                        opponentLabel = opponentName
+                Spacer(modifier = Modifier.height(48.dp))
+
+                Button(
+                    onClick = {
+                        viewModel.startNewMatch()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF22C55E)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                ) {
+                    Text("JOGAR NOVAMENTE", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedButton(
+                    onClick = {
+                        onExit()
+                    },
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                ) {
+                    Text("VOLTAR AO MENU", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+            }
+        }
+        return
+    }
+
+    var showConfetti by remember { mutableStateOf(false) }
+    LaunchedEffect(viewModel.matchResult) {
+        if (viewModel.matchResult == MatchResult.WIN) {
+            showConfetti = true
+            delay(2000)
+            showConfetti = false
+        }
+    }
+
+    val context = LocalContext.current
+    LaunchedEffect(viewModel.matchResult) {
+        if (viewModel.matchResult == MatchResult.LOSS) {
+            try {
+                val vibrator = context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? android.os.Vibrator
+                if (vibrator != null) {
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        vibrator.vibrate(
+                            android.os.VibrationEffect.createOneShot(
+                                500L,
+                                android.os.VibrationEffect.DEFAULT_AMPLITUDE
+                            )
+                        )
+                    } else {
+                        @Suppress("DEPRECATION")
+                        vibrator.vibrate(500L)
+                    }
+                }
+            } catch (e: Exception) {}
+        }
+    }
+
+    var opponentReactionText by remember { mutableStateOf("") }
+    LaunchedEffect(viewModel.opponentReaction, viewModel.opponentReactionTime) {
+        if (viewModel.opponentReaction.isNotEmpty() && viewModel.opponentReactionTime > 0L) {
+            opponentReactionText = viewModel.opponentReaction
+            delay(3000)
+            opponentReactionText = ""
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Option to leave
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (isOnline) "PARTIDA: MODO ONLINE" else "PARTIDA: VERSUS CPU",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF9A9078)
+                )
+
+                Row(
+                    modifier = Modifier
+                        .clickable { onExit() }
+                        .padding(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Leave game",
+                        tint = Color(0xFFF87171),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "DESISTIR",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFF87171)
                     )
                 }
             }
+
+            // Best of 5 score counter
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF152031), RoundedCornerShape(12.dp))
+                    .border(1.dp, Color(0xFFFACC15).copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .background(Color(0xFF4ADE80), CircleShape)
+                    )
+                    Text(
+                        text = "VOCÊ",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White
+                    )
+                }
+
+                Text(
+                    text = "${viewModel.playerRoundWins}  x  ${viewModel.opponentRoundWins}",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color(0xFFFACC15),
+                    letterSpacing = 1.sp
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = opponentName.uppercase(),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .background(Color(0xFFF87171), CircleShape)
+                    )
+                }
+            }
+
+            if (isOnline) {
+                Text(
+                    text = if (isMyTurn) "✓ SUA VEZ! ESCOLHA UM ATRIBUTO DO SEU CARD" else "⏳ AGUARDANDO PALPITE DO ADVERSÁRIO...",
+                    color = if (isMyTurn) Color(0xFF4ADE80) else Color(0xFFFB923C),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+            }
+
+            // Scrollable column just in case sizes are cramped on older devices
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(vertical = 12.dp)
+                ) {
+                    // Player Card Section
+                    item {
+                        InteractivePlayerCard(
+                            card = playerCard,
+                            isMyTurn = isMyTurn,
+                            isComparing = viewModel.isComparing,
+                            consecutiveWins = viewModel.consecutiveWins,
+                            onSelectStat = { stat, value ->
+                                val oppValue = when (stat) {
+                                    "ATAQUE" -> opponentCard.attack
+                                    "DEFESA" -> opponentCard.defense
+                                    "TÉCNICA" -> opponentCard.technique
+                                    "ALTURA" -> opponentCard.heightInCm
+                                    "VELOCIDADE" -> opponentCard.speed
+                                    else -> opponentCard.technique
+                                }
+                                onSelectStat(stat, value, oppValue)
+                            }
+                        )
+                    }
+
+                    // VS circle in between
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(Color(0xFFFACC15), CircleShape)
+                                    .border(2.dp, Color(0xFF081425), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "VS",
+                                    color = Color(0xFF3C2F00),
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Black,
+                                    fontStyle = FontStyle.Italic
+                                )
+                            }
+                        }
+                    }
+
+                    // Opponent Card Section
+                    item {
+                        OpponentCardPlaceholder(
+                            card = opponentCard,
+                            opponentLabel = opponentName
+                        )
+                    }
+                }
+            }
+
+            // Quick Reactions list
+            if (isOnline) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "REAGIR:",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF9A9078),
+                        modifier = Modifier.padding(end = 4.dp)
+                    )
+                    listOf("😂", "😱", "🔥", "👏").forEach { emoji ->
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(Color(0xFF152031), CircleShape)
+                                .border(1.dp, Color(0xFFFACC15).copy(alpha = 0.4f), CircleShape)
+                                .clickable {
+                                    viewModel.sendReaction(emoji)
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(emoji, fontSize = 20.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Float reaction banner
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            AnimatedVisibility(
+                visible = opponentReactionText.isNotEmpty(),
+                enter = fadeIn() + scaleIn(initialScale = 0.5f),
+                exit = fadeOut() + scaleOut()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .background(Color(0xFFFACC15), RoundedCornerShape(16.dp))
+                        .border(2.dp, Color(0xFF3C2F00), RoundedCornerShape(16.dp))
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Adversário:", color = Color(0xFF3C2F00), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(opponentReactionText, fontSize = 22.sp)
+                    }
+                }
+            }
+        }
+
+        if (showConfetti) {
+            ConfettiRain()
         }
     }
 }
@@ -1505,20 +1997,80 @@ fun CardBattleScreen(
 fun InteractivePlayerCard(
     card: PlayerCard,
     isMyTurn: Boolean = true,
+    isComparing: Boolean = false,
+    consecutiveWins: Int = 0,
     onSelectStat: (statName: String, value: Int) -> Unit
 ) {
+    val isHot = consecutiveWins >= 2
+
+    val borderPulse = if (isHot) {
+        val transition = rememberInfiniteTransition(label = "hot_border")
+        val floatAnim by transition.animateFloat(
+            initialValue = 0.8f,
+            targetValue = 1.2f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(600, easing = EaseInOut),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "hot_pulse"
+        )
+        floatAnim
+    } else {
+        1f
+    }
+
+    var selectedStatNameState by remember(card) { mutableStateOf<String?>(null) }
+
+    val handleStatClick = { statLabel: String, statValue: Int ->
+        if (isMyTurn) {
+            if (selectedStatNameState == statLabel) {
+                onSelectStat(statLabel, statValue)
+                selectedStatNameState = null
+            } else {
+                selectedStatNameState = statLabel
+            }
+        }
+    }
+
+    var timeLeft by remember(card, isMyTurn, isComparing) { mutableStateOf(15f) }
+
+    LaunchedEffect(card, isMyTurn, isComparing) {
+        if (isMyTurn && !isComparing) {
+            timeLeft = 15f
+            while (timeLeft > 0f) {
+                delay(10)
+                timeLeft -= 0.01f
+            }
+            onSelectStat("TIMEOUT", -1)
+        }
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .border(
-                if (card.isGold) BorderStroke(4.dp, Brush.verticalGradient(listOf(Color(0xFFFEF08A), Color(0xFFD97706))))
-                else BorderStroke(2.dp, Color(0xFF1F2A3C)),
+                when {
+                    isHot -> BorderStroke((4 * borderPulse).dp, Color(0xFFF97316))
+                    card.isGold -> BorderStroke(4.dp, Brush.verticalGradient(listOf(Color(0xFFFEF08A), Color(0xFFD97706))))
+                    else -> BorderStroke(2.dp, Color(0xFF1F2A3C))
+                },
                 RoundedCornerShape(20.dp)
             ),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF1F2A3C)),
         shape = RoundedCornerShape(20.dp)
     ) {
         Column {
+            if (isMyTurn && !isComparing) {
+                LinearProgressIndicator(
+                    progress = { timeLeft / 15f },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp),
+                    color = Color.Red,
+                    trackColor = Color.Red.copy(alpha = 0.2f)
+                )
+            }
+
             // Header
             Row(
                 modifier = Modifier
@@ -1546,10 +2098,16 @@ fun InteractivePlayerCard(
                         )
                     }
                     Text(
-                        text = card.name,
+                        text = if (isHot) "🔥 ${card.name}" else card.name,
                         color = if (card.isGold) Color(0xFF3C2F00) else Color(0xFFD8E3FB),
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+                        fontSize = 16.sp,
+                        modifier = Modifier.graphicsLayer {
+                            if (isHot) {
+                                scaleX = borderPulse
+                                scaleY = borderPulse
+                            }
+                        }
                     )
                 }
 
@@ -1640,7 +2198,8 @@ fun InteractivePlayerCard(
                     label = "ATAQUE",
                     value = card.attack,
                     icon = Icons.Default.PlayArrow,
-                    onClick = { if (isMyTurn) onSelectStat("ATAQUE", card.attack) },
+                    isSelected = selectedStatNameState == "ATAQUE",
+                    onClick = { handleStatClick("ATAQUE", card.attack) },
                     modifier = Modifier.testTag("stat_row_attack")
                 )
 
@@ -1648,7 +2207,8 @@ fun InteractivePlayerCard(
                     label = "DEFESA",
                     value = card.defense,
                     icon = Icons.Default.Build,
-                    onClick = { if (isMyTurn) onSelectStat("DEFESA", card.defense) },
+                    isSelected = selectedStatNameState == "DEFESA",
+                    onClick = { handleStatClick("DEFESA", card.defense) },
                     modifier = Modifier.testTag("stat_row_defense")
                 )
 
@@ -1656,7 +2216,8 @@ fun InteractivePlayerCard(
                     label = "TÉCNICA",
                     value = card.technique,
                     icon = Icons.Default.Star,
-                    onClick = { if (isMyTurn) onSelectStat("TÉCNICA", card.technique) },
+                    isSelected = selectedStatNameState == "TÉCNICA",
+                    onClick = { handleStatClick("TÉCNICA", card.technique) },
                     modifier = Modifier.testTag("stat_row_technique")
                 )
 
@@ -1665,7 +2226,8 @@ fun InteractivePlayerCard(
                     value = card.heightInCm,
                     customValueString = "%.2f m".format(card.heightInCm / 100.0),
                     icon = Icons.Default.Person,
-                    onClick = { if (isMyTurn) onSelectStat("ALTURA", card.heightInCm) },
+                    isSelected = selectedStatNameState == "ALTURA",
+                    onClick = { handleStatClick("ALTURA", card.heightInCm) },
                     modifier = Modifier.testTag("stat_row_height")
                 )
 
@@ -1673,9 +2235,59 @@ fun InteractivePlayerCard(
                     label = "VELOCIDADE",
                     value = card.speed,
                     icon = Icons.Default.ArrowForward,
-                    onClick = { if (isMyTurn) onSelectStat("VELOCIDADE", card.speed) },
+                    isSelected = selectedStatNameState == "VELOCIDADE",
+                    onClick = { handleStatClick("VELOCIDADE", card.speed) },
                     modifier = Modifier.testTag("stat_row_speed")
                 )
+
+                AnimatedVisibility(
+                    visible = isMyTurn && selectedStatNameState != null,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    val currentStatName = selectedStatNameState ?: ""
+                    val currentStatVal = when (currentStatName) {
+                        "ATAQUE" -> card.attack
+                        "DEFESA" -> card.defense
+                        "TÉCNICA" -> card.technique
+                        "ALTURA" -> card.heightInCm
+                        "VELOCIDADE" -> card.speed
+                        else -> 0
+                    }
+                    Button(
+                        onClick = {
+                            if (isMyTurn && selectedStatNameState != null) {
+                                onSelectStat(currentStatName, currentStatVal)
+                                selectedStatNameState = null
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF22C55E)),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp)
+                            .height(50.dp)
+                            .testTag("confirm_stat_button")
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Confirm Play",
+                                tint = Color.White
+                            )
+                            Text(
+                                "CONFIRMAR JOGADA",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                letterSpacing = 0.5.sp
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -1687,22 +2299,27 @@ fun StatSelectionRow(
     label: String,
     value: Int,
     customValueString: String? = null,
-    icon: androidx.compose.ui.graphics.vector.ImageVector, // removido imageVector
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    isSelected: Boolean = false,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var isPressed by remember { mutableStateOf(false) }
+    val isHighlighted = isSelected || isPressed
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(if (isPressed) Color(0xFFFACC15) else Color(0xFF2A3548))
-            .pointerInput(Unit) {  // corrigido isPressed
+            .background(if (isHighlighted) Color(0xFFFACC15) else Color(0xFF2A3548))
+            .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
                         isPressed = true
-                        tryAwaitRelease()
-                        isPressed = false
+                        try {
+                            tryAwaitRelease()
+                        } finally {
+                            isPressed = false
+                        }
                         onClick()
                     }
                 )
@@ -1718,21 +2335,21 @@ fun StatSelectionRow(
             Icon(
                 imageVector = icon,
                 contentDescription = "$label icon",
-                tint = if (isPressed) Color(0xFF3C2F00) else Color(0xFFFACC15),
+                tint = if (isHighlighted) Color(0xFF3C2F00) else Color(0xFFFACC15),
                 modifier = Modifier.size(20.dp)
             )
             Text(
                 text = label,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (isPressed) Color(0xFF3C2F00) else Color(0xFFD8E3FB)
+                color = if (isHighlighted) Color(0xFF3C2F00) else Color(0xFFD8E3FB)
             )
         }
         Text(
             text = customValueString ?: value.toString(),
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            color = if (isPressed) Color(0xFF3C2F00) else Color(0xFFFACC15)
+            color = if (isHighlighted) Color(0xFF3C2F00) else Color(0xFFFACC15)
         )
     }
 }
