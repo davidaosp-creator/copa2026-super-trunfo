@@ -2,6 +2,10 @@ package com.example
 
 import android.content.Intent
 import android.os.Bundle
+import android.speech.tts.TextToSpeech
+import android.media.AudioTrack
+import android.media.AudioFormat
+import android.media.AudioManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -80,6 +84,10 @@ enum class GameTab {
 // Game Modes
 enum class PlayMode {
     NONE, MATCHMAKING, CPU_GAME, ONLINE_GAME
+}
+
+enum class IntroStep {
+    NONE, SHUFFLE, COIN_FLIP, READY
 }
 
 // Match Result
@@ -291,6 +299,28 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
     // Opponent reaction state
     var opponentReaction by mutableStateOf("")
     var opponentReactionTime by mutableStateOf(0L)
+
+    // ETAPA 1: Intro sequence states
+    var isIntroActive by mutableStateOf(false)
+    var introStep by mutableStateOf(IntroStep.NONE)
+    var coinFlipResult by mutableStateOf("") // "CARA" or "COROA"
+    var didPlayerWinCoinFlip by mutableStateOf(false)
+    var playerSelectedDeckId by mutableStateOf<Int?>(null) // 1 or 2
+    var cpuSelectedDeckId by mutableStateOf<Int?>(null) // 1 or 2
+
+    fun startIntro() {
+        isIntroActive = true
+        introStep = IntroStep.SHUFFLE
+        coinFlipResult = ""
+        didPlayerWinCoinFlip = false
+        playerSelectedDeckId = null
+        cpuSelectedDeckId = null
+    }
+
+    fun finishIntro() {
+        isIntroActive = false
+        introStep = IntroStep.NONE
+    }
 
     fun startNewMatch() {
         playerRoundWins = 0
@@ -632,6 +662,221 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
 }
 
 // ViewModel Factory
+// Top-level audio synthesizers and triggers
+var globalSpeakTts: ((String) -> Unit)? = null
+
+fun playRefereeWhistle() {
+    Thread {
+        val sampleRate = 44100
+        val durationMs = 800
+        val numSamples = sampleRate * durationMs / 1000
+        val sample = DoubleArray(numSamples)
+        val generatedSnd = ByteArray(2 * numSamples)
+
+        for (i in 0 until numSamples) {
+            val t = i.toDouble() / sampleRate
+            val isMuted = i in (numSamples * 0.45).toInt()..(numSamples * 0.55).toInt()
+            if (isMuted) {
+                sample[i] = 0.0
+            } else {
+                val f1 = 2000.0
+                val f2 = 2300.0
+                val wave = Math.sin(2.0 * Math.PI * f1 * t) + Math.sin(2.0 * Math.PI * f2 * t)
+                val jitter = (Math.random() * 2.0 - 1.0) * 0.15
+                val warble = 1.0 + 0.3 * Math.sin(2.0 * Math.PI * 30.0 * t)
+                sample[i] = (wave / 2.0 + jitter) * warble
+            }
+        }
+
+        // Convert double to 16-bit PCM bytes
+        var idx = 0
+        for (dVal in sample) {
+            val value = (dVal * 32767).toInt().coerceIn(-32768, 32767)
+            generatedSnd[idx++] = (value and 0x00ff).toByte()
+            generatedSnd[idx++] = ((value and 0xff00) ushr 8).toByte()
+        }
+
+        try {
+            val minBufferSize = AudioTrack.getMinBufferSize(
+                sampleRate,
+                AudioFormat.CHANNEL_OUT_MONO,
+                AudioFormat.ENCODING_PCM_16BIT
+            )
+
+            val audioTrack = AudioTrack(
+                AudioManager.STREAM_MUSIC,
+                sampleRate,
+                AudioFormat.CHANNEL_OUT_MONO,
+                AudioFormat.ENCODING_PCM_16BIT,
+                Math.max(generatedSnd.size, minBufferSize),
+                AudioTrack.MODE_STATIC
+            )
+
+            audioTrack.write(generatedSnd, 0, generatedSnd.size)
+            audioTrack.play()
+            Thread.sleep(durationMs.toLong() + 100)
+            audioTrack.release()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }.start()
+}
+
+fun playCardShuffleSound() {
+    Thread {
+        val sampleRate = 44100
+        val durationMs = 1500
+        val numSamples = sampleRate * durationMs / 1000
+        val sample = DoubleArray(numSamples)
+        val generatedSnd = ByteArray(2 * numSamples)
+        
+        val totalClicks = 15
+        val clickDuration = numSamples / totalClicks
+        for (click in 0 until totalClicks) {
+            val clickStart = click * clickDuration
+            for (i in 0 until clickDuration) {
+                val absIdx = clickStart + i
+                if (absIdx >= numSamples) break
+                val t = i.toDouble() / sampleRate
+                val decay = Math.exp(-120.0 * t)
+                val freq = 800.0 - (click * 20)
+                val tone = Math.sin(2.0 * Math.PI * freq * t)
+                val noise = (Math.random() * 2.0 - 1.0) * 0.3
+                sample[absIdx] = (tone * 0.4 + noise) * decay
+            }
+        }
+        
+        var idx = 0
+        for (dVal in sample) {
+            val value = (dVal * 32767).toInt().coerceIn(-32768, 32767)
+            generatedSnd[idx++] = (value and 0x00ff).toByte()
+            generatedSnd[idx++] = ((value and 0xff00) ushr 8).toByte()
+        }
+
+        try {
+            val minBufferSize = AudioTrack.getMinBufferSize(
+                sampleRate,
+                AudioFormat.CHANNEL_OUT_MONO,
+                AudioFormat.ENCODING_PCM_16BIT
+            )
+
+            val audioTrack = AudioTrack(
+                AudioManager.STREAM_MUSIC,
+                sampleRate,
+                AudioFormat.CHANNEL_OUT_MONO,
+                AudioFormat.ENCODING_PCM_16BIT,
+                Math.max(generatedSnd.size, minBufferSize),
+                AudioTrack.MODE_STATIC
+            )
+
+            audioTrack.write(generatedSnd, 0, generatedSnd.size)
+            audioTrack.play()
+            Thread.sleep(durationMs.toLong() + 100)
+            audioTrack.release()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }.start()
+}
+
+fun playCoinSpinSound() {
+    Thread {
+        val sampleRate = 44100
+        val durationMs = 1500
+        val numSamples = sampleRate * durationMs / 1000
+        val sample = DoubleArray(numSamples)
+        val generatedSnd = ByteArray(2 * numSamples)
+        
+        for (i in 0 until numSamples) {
+            val t = i.toDouble() / sampleRate
+            val baseFreq = 1800.0 + 300.0 * Math.sin(2.0 * Math.PI * 8.0 * t)
+            val ring = Math.sin(2.0 * Math.PI * baseFreq * t) + 0.3 * Math.sin(2.0 * Math.PI * (baseFreq * 1.5) * t)
+            val decay = Math.max(0.0, 1.0 - (t / 1.5))
+            sample[i] = ring * 0.4 * decay
+        }
+        
+        var idx = 0
+        for (dVal in sample) {
+            val value = (dVal * 32767).toInt().coerceIn(-32768, 32767)
+            generatedSnd[idx++] = (value and 0x00ff).toByte()
+            generatedSnd[idx++] = ((value and 0xff00) ushr 8).toByte()
+        }
+
+        try {
+            val minBufferSize = AudioTrack.getMinBufferSize(
+                sampleRate,
+                AudioFormat.CHANNEL_OUT_MONO,
+                AudioFormat.ENCODING_PCM_16BIT
+            )
+
+            val audioTrack = AudioTrack(
+                AudioManager.STREAM_MUSIC,
+                sampleRate,
+                AudioFormat.CHANNEL_OUT_MONO,
+                AudioFormat.ENCODING_PCM_16BIT,
+                Math.max(generatedSnd.size, minBufferSize),
+                AudioTrack.MODE_STATIC
+            )
+
+            audioTrack.write(generatedSnd, 0, generatedSnd.size)
+            audioTrack.play()
+            Thread.sleep(durationMs.toLong() + 50)
+            audioTrack.release()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }.start()
+}
+
+fun playCoinLandingSound(won: Boolean) {
+    Thread {
+        val sampleRate = 44100
+        val durationMs = 600
+        val numSamples = sampleRate * durationMs / 1000
+        val sample = DoubleArray(numSamples)
+        val generatedSnd = ByteArray(2 * numSamples)
+        
+        val ringFreq = if (won) 2500.0 else 1100.0
+        for (i in 0 until numSamples) {
+            val t = i.toDouble() / sampleRate
+            val decay = Math.exp(-15.0 * t)
+            val tone = Math.sin(2.0 * Math.PI * ringFreq * t) + 0.5 * Math.sin(2.0 * Math.PI * (ringFreq * 1.2) * t)
+            sample[i] = tone * 0.5 * decay
+        }
+        
+        var idx = 0
+        for (dVal in sample) {
+            val value = (dVal * 32767).toInt().coerceIn(-32768, 32767)
+            generatedSnd[idx++] = (value and 0x00ff).toByte()
+            generatedSnd[idx++] = ((value and 0xff00) ushr 8).toByte()
+        }
+
+        try {
+            val minBufferSize = AudioTrack.getMinBufferSize(
+                sampleRate,
+                AudioFormat.CHANNEL_OUT_MONO,
+                AudioFormat.ENCODING_PCM_16BIT
+            )
+
+            val audioTrack = AudioTrack(
+                AudioManager.STREAM_MUSIC,
+                sampleRate,
+                AudioFormat.CHANNEL_OUT_MONO,
+                AudioFormat.ENCODING_PCM_16BIT,
+                Math.max(generatedSnd.size, minBufferSize),
+                AudioTrack.MODE_STATIC
+            )
+
+            audioTrack.write(generatedSnd, 0, generatedSnd.size)
+            audioTrack.play()
+            Thread.sleep(durationMs.toLong() + 50)
+            audioTrack.release()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }.start()
+}
+
 class GameViewModelFactory(private val repository: GameRepository) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(GameViewModel::class.java)) {
@@ -643,9 +888,45 @@ class GameViewModelFactory(private val repository: GameRepository) : ViewModelPr
 }
 
 class MainActivity : ComponentActivity() {
+    private var tts: TextToSpeech? = null
+
+    private fun speakTts(text: String) {
+        try {
+            tts?.setPitch(1.1f)
+            tts?.setSpeechRate(1.1f)
+            tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "copa_trunfo_tts")
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        globalSpeakTts = null
+        try {
+            tts?.stop()
+            tts?.shutdown()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        try {
+            tts = TextToSpeech(this) { status ->
+                if (status == TextToSpeech.SUCCESS) {
+                    tts?.language = java.util.Locale("pt", "BR")
+                }
+            }
+            globalSpeakTts = { text ->
+                speakTts(text)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
 
         try {
             if (com.google.firebase.FirebaseApp.getApps(this).isEmpty()) {
@@ -682,7 +963,12 @@ class MainActivity : ComponentActivity() {
 
             CopaTrunfoTheme {
                 if (showHomeScreen) {
-                    HomeScreen(onStartGame = { showHomeScreen = false })
+                    HomeScreen(onStartGame = {
+                        playRefereeWhistle()
+                        globalSpeakTts?.invoke("Começa o jogo!")
+                        showHomeScreen = false
+                        gameViewModel.startIntro()
+                    })
                 } else {
                     Scaffold(
                         modifier = Modifier.fillMaxSize(),
@@ -1161,6 +1447,34 @@ fun HomeScreen(onStartGame: () -> Unit) {
 @Composable
 fun JogarScreen(viewModel: GameViewModel, profile: UserProfile) {
     val context = LocalContext.current
+    if (viewModel.isIntroActive) {
+        AnimatedContent(
+            targetState = viewModel.introStep,
+            transitionSpec = {
+                fadeIn(animationSpec = tween(400)) togetherWith fadeOut(animationSpec = tween(400))
+            },
+            label = "introStepAnim"
+        ) { step ->
+            when (step) {
+                IntroStep.SHUFFLE -> {
+                    ShuffleScreen(viewModel = viewModel)
+                }
+                IntroStep.COIN_FLIP -> {
+                    CoinFlipScreen(viewModel = viewModel)
+                }
+                IntroStep.READY -> {
+                    IntroReadyScreen(viewModel = viewModel)
+                }
+                else -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Color(0xFFFACC15))
+                    }
+                }
+            }
+        }
+        return
+    }
+
     AnimatedContent(
         targetState = viewModel.playMode,
         transitionSpec = {
@@ -3172,3 +3486,616 @@ fun StatCardBox(label: String, value: String, color: Color, modifier: Modifier =
         }
     }
 }
+
+// ---------------- ETAPA 1 NEW SCREENS ----------------
+
+@Composable
+fun ShuffleScreen(viewModel: GameViewModel) {
+    var shuffleFinished by remember { mutableStateOf(false) }
+    var cardCountLeft by remember { mutableStateOf(0) }
+    var cardCountRight by remember { mutableStateOf(0) }
+
+    val splitProgress by animateFloatAsState(
+        targetValue = if (shuffleFinished) 1f else 0f,
+        animationSpec = tween(1500, easing = EaseOutBack),
+        label = "split_progress"
+    )
+
+    LaunchedEffect(Unit) {
+        // Play the card shuffle sound
+        playCardShuffleSound()
+        // Wait 3 seconds of shuffling
+        delay(3000)
+        shuffleFinished = true
+        // Increment card count left and right
+        for (i in 1..20) {
+            delay(40)
+            cardCountLeft = i
+            cardCountRight = i
+        }
+        // Wait 1.5 seconds to appreciate the result
+        delay(1500)
+        // Move to Coin Flip
+        viewModel.introStep = IntroStep.COIN_FLIP
+    }
+
+    // Infinite rotation jitter during shuffle
+    val infiniteTransition = rememberInfiniteTransition(label = "cards_jitter")
+    val jitterOffset by infiniteTransition.animateFloat(
+        initialValue = -8f,
+        targetValue = 8f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(100, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "jitter"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF081425))
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = if (!shuffleFinished) "EMBARALHANDO..." else "DIVIDINDO BARALHO...",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Black,
+                fontStyle = FontStyle.Italic,
+                color = Color(0xFFFACC15),
+                letterSpacing = 1.5.sp,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            // Card Container
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(260.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (!shuffleFinished) {
+                    // Shuffling stack
+                    for (i in 0 until 5) {
+                        val angle = (i - 2) * 4f + jitterOffset * (if (i % 2 == 0) 1f else -1f) * 0.4f
+                        val offsetX = (i - 2) * 6f + jitterOffset * 1.5f
+                        Box(
+                            modifier = Modifier
+                                .width(130.dp)
+                                .height(190.dp)
+                                .graphicsLayer {
+                                    rotationZ = angle
+                                    translationX = offsetX
+                                }
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(Color(0xFF152031), Color(0xFF0F172A))
+                                    ),
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .border(
+                                    2.dp,
+                                    Color(0xFFFACC15).copy(alpha = 0.8f),
+                                    RoundedCornerShape(12.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            // Emblem in center
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = "Star",
+                                tint = Color(0xFFFACC15).copy(alpha = 0.3f),
+                                modifier = Modifier.size(48.dp)
+                            )
+                        }
+                    }
+                } else {
+                    // Splitting stacks animation
+                    // Left Pile (Deck A)
+                    val leftTranslation = -85.dp * splitProgress
+                    Box(
+                        modifier = Modifier
+                            .graphicsLayer {
+                                translationX = leftTranslation.toPx()
+                            }
+                            .width(130.dp)
+                            .height(190.dp)
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(Color(0xFF1E3A8A), Color(0xFF152031))
+                                ),
+                                RoundedCornerShape(12.dp)
+                            )
+                            .border(
+                                2.dp,
+                                Color(0xFF3B82F6).copy(alpha = 0.8f),
+                                RoundedCornerShape(12.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = null,
+                                tint = Color(0xFF3B82F6).copy(alpha = 0.5f),
+                                modifier = Modifier.size(36.dp)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "MONTE 1",
+                                color = Color(0xFFD8E3FB),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "$cardCountLeft cartas",
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
+                    }
+
+                    // Right Pile (Deck B)
+                    val rightTranslation = 85.dp * splitProgress
+                    Box(
+                        modifier = Modifier
+                            .graphicsLayer {
+                                translationX = rightTranslation.toPx()
+                            }
+                            .width(130.dp)
+                            .height(190.dp)
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(Color(0xFF022C22), Color(0xFF152031))
+                                ),
+                                RoundedCornerShape(12.dp)
+                            )
+                            .border(
+                                2.dp,
+                                Color(0xFF10B981).copy(alpha = 0.8f),
+                                RoundedCornerShape(12.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = null,
+                                tint = Color(0xFF10B981).copy(alpha = 0.5f),
+                                modifier = Modifier.size(36.dp)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "MONTE 2",
+                                color = Color(0xFFD8E3FB),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "$cardCountRight cartas",
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            // Subtitle status
+            Text(
+                text = if (!shuffleFinished) "Os decks estão sendo preparados..." else "Baralho dividido: 20 cartas para cada participante!",
+                color = Color(0xFFD8E3FB).copy(alpha = 0.7f),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun CoinFlipScreen(viewModel: GameViewModel) {
+    var prediction by remember { mutableStateOf<String?>(null) }
+    var isFlipping by remember { mutableStateOf(false) }
+    var spinFinished by remember { mutableStateOf(false) }
+    var resultSide by remember { mutableStateOf("") } // "CARA" or "COROA"
+    var winStatusMessage by remember { mutableStateOf("") }
+    var userWonFlip by remember { mutableStateOf(false) }
+    
+    // Decks Selection States
+    var selectedDeck by remember { mutableStateOf<Int?>(null) } // 1 or 2
+    var cpuSelectedDeck by remember { mutableStateOf<Int?>(null) }
+    var showDeckChoice by remember { mutableStateOf(false) }
+
+    // Floating rotation angle for representation
+    val infiniteTransition = rememberInfiniteTransition(label = "coin_loop")
+    val angleSpin by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "angle_spin"
+    )
+
+    // Smooth entry angle for when spin is finished
+    val staticAngle by animateFloatAsState(
+        targetValue = if (resultSide == "CARA") 0f else 180f,
+        animationSpec = tween(500, easing = EaseOutBack),
+        label = "static_angle"
+    )
+
+    val handleStartFlip = { chosen: String ->
+        prediction = chosen
+        isFlipping = true
+        
+        playCoinSpinSound()
+
+        viewModel.viewModelScope.launch {
+            delay(2000) // Spin for 2 seconds
+            spinFinished = true
+            isFlipping = false
+            
+            val option = if (Random.nextBoolean()) "CARA" else "COROA"
+            resultSide = option
+            val won = chosen == option
+            userWonFlip = won
+            viewModel.didPlayerWinCoinFlip = won
+            viewModel.coinFlipResult = option
+
+            playCoinLandingSound(won)
+
+            if (won) {
+                winStatusMessage = "VOCÊ GANHOU O SORTEIO! Escolha o seu baralho abaixo."
+                showDeckChoice = true
+            } else {
+                winStatusMessage = "A CPU GANHOU O SORTEIO! Aguardando escolha da CPU..."
+                delay(1800)
+                // CPU automatically chooses a deck
+                val cpuChoice = if (Random.nextBoolean()) 1 else 2
+                cpuSelectedDeck = cpuChoice
+                viewModel.cpuSelectedDeckId = cpuChoice
+                
+                val userChoice = if (cpuChoice == 1) 2 else 1
+                selectedDeck = userChoice
+                viewModel.playerSelectedDeckId = userChoice
+                
+                winStatusMessage = "A CPU escolheu o Baralho $cpuChoice! Você ficou com o Baralho $userChoice."
+                delay(2200)
+                // Automatically proceed to READY screen
+                viewModel.introStep = IntroStep.READY
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF081425))
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "SORTEIO DO BARALHO",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Black,
+                fontStyle = FontStyle.Italic,
+                color = Color(0xFFFACC15),
+                letterSpacing = 1.5.sp,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Text(
+                text = "Quem acertar o sorteio decide o baralho primeiro!",
+                color = Color(0xFFD8E3FB).copy(alpha = 0.7f),
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 32.dp)
+            )
+
+            // Dynamic view representation of coin
+            Box(
+                modifier = Modifier
+                    .size(130.dp)
+                    .graphicsLayer {
+                        rotationY = if (isFlipping) angleSpin else staticAngle
+                        cameraDistance = 12f * density
+                    }
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(Color(0xFFFEF08A), Color(0xFFFACC15), Color(0xFFD97706))
+                        ),
+                        CircleShape
+                    )
+                    .border(4.dp, Color(0xFF78350F), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isFlipping) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.White.copy(alpha = 0.15f), CircleShape)
+                    )
+                } else if (resultSide.isNotEmpty()) {
+                    Text(
+                        text = if (resultSide == "CARA") "⚽\nCARA" else "🏆\nCOROA",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFF78350F),
+                        textAlign = TextAlign.Center,
+                        lineHeight = 20.sp
+                    )
+                } else {
+                    Text(
+                        text = "?",
+                        fontSize = 44.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFF78350F)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            if (prediction == null) {
+                Text(
+                    text = "FAÇA SEU PALPITE:",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Button(
+                        onClick = { handleStartFlip("CARA") },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6)),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp)
+                    ) {
+                        Text("CARA ⚽", fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+
+                    Button(
+                        onClick = { handleStartFlip("COROA") },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp)
+                    ) {
+                        Text("COROA 🏆", fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                }
+            } else {
+                if (isFlipping) {
+                    Text(
+                        text = "Moeda girando...\nSeu palpite: $prediction",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White,
+                        textAlign = TextAlign.Center
+                    )
+                } else {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Resultado: $resultSide",
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFFFACC15)
+                        )
+                        Text(
+                            text = if (userWonFlip) "🎉 Você acertou! 🎉" else "❌ Errou! A CPU venceu o sorteio.",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (userWonFlip) Color(0xFF4ADE80) else Color(0xFFF87171),
+                            modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
+                        )
+
+                        Text(
+                            text = winStatusMessage,
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+
+                        if (showDeckChoice && selectedDeck == null) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                // Deck A option (1)
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .background(Color(0xFF152031), RoundedCornerShape(12.dp))
+                                        .border(2.dp, Color(0xFF3B82F6), RoundedCornerShape(12.dp))
+                                        .clickable {
+                                            selectedDeck = 1
+                                            viewModel.playerSelectedDeckId = 1
+                                            cpuSelectedDeck = 2
+                                            viewModel.cpuSelectedDeckId = 2
+                                            
+                                            viewModel.viewModelScope.launch {
+                                                delay(1000)
+                                                viewModel.introStep = IntroStep.READY
+                                            }
+                                        }
+                                        .padding(16.dp)
+                                ) {
+                                    Text("BARALHO 1", color = Color.White, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text("20 Cartas", color = Color(0xFF3B82F6), fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text("Contém craques lendários", color = Color(0xFFADB4CE), fontSize = 10.sp, textAlign = TextAlign.Center)
+                                }
+
+                                // Deck B option (2)
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .background(Color(0xFF152031), RoundedCornerShape(12.dp))
+                                        .border(2.dp, Color(0xFF10B981), RoundedCornerShape(12.dp))
+                                        .clickable {
+                                            selectedDeck = 2
+                                            viewModel.playerSelectedDeckId = 2
+                                            cpuSelectedDeck = 1
+                                            viewModel.cpuSelectedDeckId = 1
+                                            
+                                            viewModel.viewModelScope.launch {
+                                                delay(1000)
+                                                viewModel.introStep = IntroStep.READY
+                                            }
+                                        }
+                                        .padding(16.dp)
+                                ) {
+                                    Text("BARALHO 2", color = Color.White, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text("20 Cartas", color = Color(0xFF10B981), fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text("Contém craques modernos", color = Color(0xFFADB4CE), fontSize = 10.sp, textAlign = TextAlign.Center)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun IntroReadyScreen(viewModel: GameViewModel) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF081425))
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "TUDO PRONTO!",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFFACC15),
+                letterSpacing = 1.sp
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "PRONTO PARA COMEÇAR",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Black,
+                fontStyle = FontStyle.Italic,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                lineHeight = 36.sp,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Show final summary of decks
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF152031)),
+                border = BorderStroke(1.dp, Color(0xFFFACC15).copy(alpha = 0.3f)),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "RESUMO DA DISTRIBUIÇÃO",
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFADB4CE),
+                        fontSize = 12.sp,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("VOCÊ", color = Color(0xFF3B82F6), fontWeight = FontWeight.Black, fontSize = 13.sp)
+                            Text("Baralho ${viewModel.playerSelectedDeckId ?: 1}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text("20 cartas", color = Color(0xFF9A9078), fontSize = 11.sp)
+                        }
+
+                        Text("X", color = Color(0xFFFACC15), fontSize = 18.sp, fontWeight = FontWeight.Black)
+
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("OPONENTE (CPU)", color = Color(0xFF10B981), fontWeight = FontWeight.Black, fontSize = 13.sp)
+                            Text("Baralho ${viewModel.cpuSelectedDeckId ?: 2}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text("20 cartas", color = Color(0xFF9A9078), fontSize = 11.sp)
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            Button(
+                onClick = {
+                    viewModel.finishIntro()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF22C55E)),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .testTag("finish_intro_button")
+            ) {
+                Text(
+                    text = "INICIAR PARTIDA ➔",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        }
+    }
+}
+
