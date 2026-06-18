@@ -108,142 +108,143 @@ data class PlayerCard(
     val speed: Int,
     val imageUrl: String,
     val isGold: Boolean = false,
-    val legendBio: String = ""
+    val legendBio: String = "",
+    val blackjackValue: Int = 10
 )
 
 // Primary Player database/deck
 val PLAYERS_DECK = listOf(
-    // LENDAS
+    // LENDAS (Coringas: podem escolher valor de 1 a 11)
     PlayerCard("pele", "PELÉ", "BRA", "ATA", 99, 45, 99, 173, 95,
         "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Pel%C3%A9_1970.jpg/440px-Pel%C3%A9_1970.jpg",
-        isGold = true, legendBio = "O Rei do Futebol, único tricampeão mundial da FIFA e considerado o maior atleta de todos os tempos."),
+        isGold = true, legendBio = "O Rei do Futebol, único tricampeão mundial da FIFA e considerado o maior atleta de todos os tempos.", blackjackValue = 11),
 
     PlayerCard("ronaldo", "RONALDO FENÔMENO", "BRA", "ATA", 98, 38, 97, 183, 97,
         "https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Ronaldo_R9.jpg/440px-Ronaldo_R9.jpg",
-        isGold = true, legendBio = "Dono de arranque e finalização devastadores, campeão mundial em 2002 e lenda implacável da Camisa 9."),
+        isGold = true, legendBio = "Dono de arranque e finalização devastadores, campeão mundial em 2002 e lenda implacável da Camisa 9.", blackjackValue = 10),
 
     PlayerCard("ronaldinho", "RONALDINHO GAÚCHO", "BRA", "MEI", 97, 35, 99, 181, 92,
         "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Ronaldinho_2.jpg/440px-Ronaldinho_2.jpg",
-        isGold = true, legendBio = "O Bruxo do futebol, conhecido por dribles impossíveis, genialidade mágica e alegria contagiante em campo."),
+        isGold = true, legendBio = "O Bruxo do futebol, conhecido por dribles impossíveis, genialidade mágica e alegria contagiante em campo.", blackjackValue = 10),
 
     PlayerCard("zico", "ZICO", "BRA", "MEI", 96, 42, 98, 172, 86,
         "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Zico_1981.jpg/440px-Zico_1981.jpg",
-        isGold = true, legendBio = "O Galinho de Quintino, criador do jogo coletivo do Flamengo de 81 e cobra de faltas com precisão cirúrgica."),
+        isGold = true, legendBio = "O Galinho de Quintino, criador do jogo coletivo do Flamengo de 81 e cobra de faltas com precisão cirúrgica.", blackjackValue = 10),
 
     PlayerCard("maradona", "MARADONA", "ARG", "MEI", 98, 36, 99, 165, 88,
         "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Maradona-Mundial_86_vs_Inglaterra_2.jpg/440px-Maradona-Mundial_86_vs_Inglaterra_2.jpg",
-        isGold = true, legendBio = "Gênio folclórico, guiou a Argentina ao título da Copa de 86 com lances históricos e técnica extraordinária."),
+        isGold = true, legendBio = "Gênio folclórico, guiou a Argentina ao título da Copa de 86 com lances históricos e técnica extraordinária.", blackjackValue = 10),
 
     PlayerCard("cr7", "CRISTIANO RONALDO", "POR", "ATA", 98, 45, 95, 187, 94,
         "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Cristiano_Ronaldo_2018.jpg/440px-Cristiano_Ronaldo_2018.jpg",
-        isGold = true, legendBio = "Máquina indiscutível de gols, dono de 5 prêmios Ballon d'Or e sinônimo supremo de foco e dedicação física."),
+        isGold = true, legendBio = "Máquina indiscutível de gols, dono de 5 prêmios Ballon d'Or e sinônimo supremo de foco e dedicação física.", blackjackValue = 11),
 
     PlayerCard("messi", "LIONEL MESSI", "ARG", "ATA", 97, 38, 99, 170, 85,
         "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Lionel_Messi_20180626.jpg/440px-Lionel_Messi_20180626.jpg",
-        isGold = true, legendBio = "Vencedor de 8 Bolas de Ouro, campeão mundial lendário de 2022 e dotado de uma visão de jogo inigualável."),
+        isGold = true, legendBio = "Vencedor de 8 Bolas de Ouro, campeão mundial lendário de 2022 e dotado de uma visão de jogo inigualável.", blackjackValue = 11),
 
     PlayerCard("beckenbauer", "FRANZ BECKENBAUER", "GER", "DEF", 85, 98, 96, 181, 83,
         "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Franz_Beckenbauer.jpg/440px-Franz_Beckenbauer.jpg",
-        isGold = true, legendBio = "Der Kaiser, criador do líbero clássico moderno, venceu a Copa como capitão (74) e como treinador (90)."),
+        isGold = true, legendBio = "Der Kaiser, criador do líbero clássico moderno, venceu a Copa como capitão (74) e como treinador (90).", blackjackValue = 9),
 
     PlayerCard("garrincha", "GARRINCHA", "BRA", "ATA", 96, 30, 99, 169, 94,
         "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Garrincha.jpg/440px-Garrincha.jpg",
-        isGold = true, legendBio = "A Alegria do Povo, bicampeão do mundo conhecido pelas fintas espetaculares que entortavam defensores de vez."),
+        isGold = true, legendBio = "A Alegria do Povo, bicampeão do mundo conhecido pelas fintas espetaculares que entortavam defensores de vez.", blackjackValue = 10),
 
     PlayerCard("distefano", "ALFREDO DI STÉFANO", "ARG", "ATA", 97, 50, 96, 178, 90,
         "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Alfredo_di_Stefano.jpg/440px-Alfredo_di_Stefano.jpg",
-        isGold = true, legendBio = "A Flecha Loira, comandante dinâmico do Real Madrid que faturou 5 Copas dos Campeões consecutivas."),
+        isGold = true, legendBio = "A Flecha Loira, comandante dinâmico do Real Madrid que faturou 5 Copas dos Campeões consecutivas.", blackjackValue = 10),
 
     // PADRÃO
     PlayerCard("mbappe", "KYLIAN MBAPPÉ", "FRA", "ATA", 96, 35, 92, 178, 97,
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/2019129095833_2019-05-09_Fussball_Champions_League_FC_Bayern_vs_FC_Liverpool_-_Sven_-_1D_X_MK_II_-_0001_-_B70I0148.jpg/440px-thumbnail.jpg"),
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/2019129095833_2019-05-09_Fussball_Champions_League_FC_Bayern_vs_FC_Liverpool_-_Sven_-_1D_X_MK_II_-_0001_-_B70I0148.jpg/440px-thumbnail.jpg", blackjackValue = 10),
 
     PlayerCard("vini", "VINI JR.", "BRA", "ATA", 95, 32, 94, 176, 95,
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Vinicius_Junior_2022.jpg/440px-Vinicius_Junior_2022.jpg"),
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Vinicius_Junior_2022.jpg/440px-Vinicius_Junior_2022.jpg", blackjackValue = 9),
 
     PlayerCard("bellingham", "JUDE BELLINGHAM", "ENG", "MEI", 91, 78, 90, 186, 79,
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Jude_Bellingham_2021.jpg/440px-Jude_Bellingham_2021.jpg"),
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Jude_Bellingham_2021.jpg/440px-Jude_Bellingham_2021.jpg", blackjackValue = 8),
 
     PlayerCard("de_bruyne", "KEVIN DE BRUYNE", "BEL", "MEI", 88, 64, 94, 181, 74,
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Kevin_De_Bruyne_2021.jpg/440px-Kevin_De_Bruyne_2021.jpg"),
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Kevin_De_Bruyne_2021.jpg/440px-Kevin_De_Bruyne_2021.jpg", blackjackValue = 8),
 
     PlayerCard("haaland", "ERLING HAALAND", "NOR", "ATA", 95, 42, 83, 195, 89,
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Erling_Haaland_2023.jpg/440px-Erling_Haaland_2023.jpg"),
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Erling_Haaland_2023.jpg/440px-Erling_Haaland_2023.jpg", blackjackValue = 10),
 
     PlayerCard("van_dijk", "VIRGIL VAN DIJK", "NED", "DEF", 60, 96, 85, 193, 78,
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Virgil_van_Dijk_2022.jpg/440px-Virgil_van_Dijk_2022.jpg"),
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Virgil_van_Dijk_2022.jpg/440px-Virgil_van_Dijk_2022.jpg", blackjackValue = 6),
 
     PlayerCard("kane", "HARRY KANE", "ENG", "ATA", 93, 48, 87, 188, 67,
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Harry_Kane_2022.jpg/440px-Harry_Kane_2022.jpg"),
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Harry_Kane_2022.jpg/440px-Harry_Kane_2022.jpg", blackjackValue = 9),
 
     PlayerCard("modric", "LUKA MODRIĆ", "CRO", "MEI", 85, 72, 93, 172, 72,
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Luka_Modri%C4%87_2019.jpg/440px-Luka_Modri%C4%87_2019.jpg"),
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Luka_Modri%C4%87_2019.jpg/440px-Luka_Modri%C4%87_2019.jpg", blackjackValue = 7),
 
     PlayerCard("salah", "MOHAMED SALAH", "EGY", "ATA", 92, 45, 90, 175, 89,
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Mohamed_Salah_2022.jpg/440px-Mohamed_Salah_2022.jpg"),
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Mohamed_Salah_2022.jpg/440px-Mohamed_Salah_2022.jpg", blackjackValue = 9),
 
     PlayerCard("rodri", "RODRI", "ESP", "MEI", 84, 93, 89, 191, 72,
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Manchester_City_vs._Inter_Milan_UEFA_Champions_League_Final_2023_Rodri.jpg/440px-Manchester_City_vs._Inter_Milan_UEFA_Champions_League_Final_2023_Rodri.jpg"),
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Manchester_City_vs._Inter_Milan_UEFA_Champions_League_Final_2023_Rodri.jpg/440px-Manchester_City_vs._Inter_Milan_UEFA_Champions_League_Final_2023_Rodri.jpg", blackjackValue = 6),
 
     PlayerCard("bernardo", "BERNARDO SILVA", "POR", "MEI", 80, 68, 92, 173, 81,
-        "https://images.unsplash.com/photo-1543351611-58f69d7c1781?w=500&auto=format&fit=crop"),
+        "https://images.unsplash.com/photo-1543351611-58f69d7c1781?w=500&auto=format&fit=crop", blackjackValue = 7),
 
     PlayerCard("foden", "PHIL FODEN", "ENG", "ATA", 90, 56, 91, 171, 87,
-        "https://images.unsplash.com/photo-1518063319789-7217e6706b04?w=500&auto=format&fit=crop"),
+        "https://images.unsplash.com/photo-1518063319789-7217e6706b04?w=500&auto=format&fit=crop", blackjackValue = 8),
 
     PlayerCard("odegaard", "MARTIN ØDEGAARD", "NOR", "MEI", 86, 62, 92, 178, 80,
-        "https://images.unsplash.com/photo-1551958219-acbc608c6377?w=500&auto=format&fit=crop"),
+        "https://images.unsplash.com/photo-1551958219-acbc608c6377?w=500&auto=format&fit=crop", blackjackValue = 7),
 
     PlayerCard("saka", "BUKAYO SAKA", "ENG", "ATA", 88, 65, 89, 178, 90,
-        "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=500&auto=format&fit=crop"),
+        "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=500&auto=format&fit=crop", blackjackValue = 8),
 
     PlayerCard("rice", "DECLAN RICE", "ENG", "MEI", 78, 90, 84, 185, 77,
-        "https://images.unsplash.com/photo-1543351611-58f69d7c1781?w=500&auto=format&fit=crop"),
+        "https://images.unsplash.com/photo-1543351611-58f69d7c1781?w=500&auto=format&fit=crop", blackjackValue = 5),
 
     PlayerCard("bruno_f", "BRUNO FERNANDES", "POR", "MEI", 89, 69, 90, 179, 81,
-        "https://images.unsplash.com/photo-1518063319789-7217e6706b04?w=500&auto=format&fit=crop"),
+        "https://images.unsplash.com/photo-1518063319789-7217e6706b04?w=500&auto=format&fit=crop", blackjackValue = 8),
 
     PlayerCard("griezmann", "ANTOINE GRIEZMANN", "FRA", "ATA", 91, 72, 91, 176, 82,
-        "https://images.unsplash.com/photo-1551958219-acbc608c6377?w=500&auto=format&fit=crop"),
+        "https://images.unsplash.com/photo-1551958219-acbc608c6377?w=500&auto=format&fit=crop", blackjackValue = 8),
 
     PlayerCard("lewandowski", "ROBERT LEWANDOWSKI", "POL", "ATA", 92, 44, 85, 185, 79,
-        "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=500&auto=format&fit=crop"),
+        "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=500&auto=format&fit=crop", blackjackValue = 9),
 
     PlayerCard("lautaro", "LAUTARO MARTÍNEZ", "ARG", "ATA", 91, 48, 85, 174, 83,
-        "https://images.unsplash.com/photo-1543351611-58f69d7c1781?w=500&auto=format&fit=crop"),
+        "https://images.unsplash.com/photo-1543351611-58f69d7c1781?w=500&auto=format&fit=crop", blackjackValue = 9),
 
     PlayerCard("leao", "RAFAEL LEÃO", "POR", "ATA", 89, 36, 89, 188, 94,
-        "https://images.unsplash.com/photo-1518063319789-7217e6706b04?w=500&auto=format&fit=crop"),
+        "https://images.unsplash.com/photo-1518063319789-7217e6706b04?w=500&auto=format&fit=crop", blackjackValue = 8),
 
     PlayerCard("son", "SON HEUNG-MIN", "KOR", "ATA", 90, 42, 86, 184, 89,
-        "https://images.unsplash.com/photo-1551958219-acbc608c6377?w=500&auto=format&fit=crop"),
+        "https://images.unsplash.com/photo-1551958219-acbc608c6377?w=500&auto=format&fit=crop", blackjackValue = 8),
 
     PlayerCard("musiala", "JAMAL MUSIALA", "GER", "MEI", 87, 61, 93, 184, 85,
-        "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=500&auto=format&fit=crop"),
+        "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=500&auto=format&fit=crop", blackjackValue = 8),
 
     PlayerCard("pedri", "PEDRI", "ESP", "MEI", 79, 68, 90, 174, 78,
-        "https://images.unsplash.com/photo-1543351611-58f69d7c1781?w=500&auto=format&fit=crop"),
+        "https://images.unsplash.com/photo-1543351611-58f69d7c1781?w=500&auto=format&fit=crop", blackjackValue = 7),
 
     PlayerCard("osimhen", "VICTOR OSIMHEN", "NGA", "ATA", 91, 41, 80, 185, 90,
-        "https://images.unsplash.com/photo-1518063319789-7217e6706b04?w=500&auto=format&fit=crop"),
+        "https://images.unsplash.com/photo-1518063319789-7217e6706b04?w=500&auto=format&fit=crop", blackjackValue = 9),
 
     PlayerCard("valverde", "FEDERICO VALVERDE", "URU", "MEI", 86, 80, 85, 182, 88,
-        "https://images.unsplash.com/photo-1551958219-acbc608c6377?w=500&auto=format&fit=crop"),
+        "https://images.unsplash.com/photo-1551958219-acbc608c6377?w=500&auto=format&fit=crop", blackjackValue = 7),
 
     PlayerCard("ruben_dias", "RÚBEN DIAS", "POR", "DEF", 50, 94, 80, 187, 70,
-        "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=500&auto=format&fit=crop"),
+        "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=500&auto=format&fit=crop", blackjackValue = 5),
 
     PlayerCard("marquinhos", "MARQUINHOS", "BRA", "DEF", 54, 91, 82, 183, 79,
-        "https://images.unsplash.com/photo-1543351611-58f69d7c1781?w=500&auto=format&fit=crop"),
+        "https://images.unsplash.com/photo-1543351611-58f69d7c1781?w=500&auto=format&fit=crop", blackjackValue = 5),
 
     PlayerCard("hakimi", "ACHRAF HAKIMI", "MAR", "DEF", 82, 81, 84, 181, 92,
-        "https://images.unsplash.com/photo-1518063319789-7217e6706b04?w=500&auto=format&fit=crop"),
+        "https://images.unsplash.com/photo-1518063319789-7217e6706b04?w=500&auto=format&fit=crop", blackjackValue = 6),
 
     PlayerCard("davies", "ALPHONSO DAVIES", "CAN", "DEF", 81, 78, 82, 183, 96,
-        "https://images.unsplash.com/photo-1551958219-acbc608c6377?w=500&auto=format&fit=crop"),
+        "https://images.unsplash.com/photo-1551958219-acbc608c6377?w=500&auto=format&fit=crop", blackjackValue = 6),
 
     PlayerCard("maignan", "MIKE MAIGNAN", "FRA", "GOL", 40, 89, 82, 191, 65,
-        "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=500&auto=format&fit=crop")
+        "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=500&auto=format&fit=crop", blackjackValue = 5)
 )
 
 // Game ViewModel
@@ -307,6 +308,56 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
     var didPlayerWinCoinFlip by mutableStateOf(false)
     var playerSelectedDeckId by mutableStateOf<Int?>(null) // 1 or 2
     var cpuSelectedDeckId by mutableStateOf<Int?>(null) // 1 or 2
+
+    // Blackjack (21 dos Craques) States
+    var playerHand by mutableStateOf<List<PlayerCard>>(emptyList())
+    var opponentHand by mutableStateOf<List<PlayerCard>>(emptyList())
+
+    var playerGoldChoices by mutableStateOf<Map<String, Int>>(emptyMap())
+    var opponentGoldChoices by mutableStateOf<Map<String, Int>>(emptyMap())
+
+    var currentBlackjackRound by mutableStateOf(1) // 1, 2, 3
+    var isOpponentHandRevealed by mutableStateOf(false)
+
+    var hasPlayerStood by mutableStateOf(false)
+    var hasOpponentStood by mutableStateOf(false)
+
+    var playerDeck by mutableStateOf<List<PlayerCard>>(emptyList())
+    var opponentDeck by mutableStateOf<List<PlayerCard>>(emptyList())
+
+    var matchesWonByPlayer by mutableStateOf(0)
+    var matchesWonByCpu by mutableStateOf(0)
+    var isMatchFinished by mutableStateOf(false)
+
+    fun handlePlayAgain() {
+        matchesWonByPlayer = 0
+        matchesWonByCpu = 0
+        isMatchFinished = false
+        playerRoundWins = 0
+        opponentRoundWins = 0
+        consecutiveWins = 0
+        startIntro()
+    }
+
+    fun handleBackToMenu() {
+        matchesWonByPlayer = 0
+        matchesWonByCpu = 0
+        isMatchFinished = false
+        playerRoundWins = 0
+        opponentRoundWins = 0
+        consecutiveWins = 0
+        playMode = PlayMode.NONE
+        isIntroActive = false
+    }
+
+    fun getDeckForId(deckId: Int?): List<PlayerCard> {
+        val id = deckId ?: 1
+        return if (id == 1) {
+            PLAYERS_DECK.subList(0, 20)
+        } else {
+            PLAYERS_DECK.subList(20, 40)
+        }
+    }
 
     fun startIntro() {
         isIntroActive = true
@@ -577,53 +628,174 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
         }
     }
 
+    fun getHandSum(hand: List<PlayerCard>, goldChoices: Map<String, Int>, isCpu: Boolean = false): Int {
+        var sum = 0
+        for (card in hand) {
+            if (card.isGold) {
+                val chosen = goldChoices[card.id]
+                if (chosen != null) {
+                    sum += chosen
+                } else {
+                    if (isCpu) {
+                        val temp = sum + 11
+                        if (temp <= 21) {
+                            sum += 11
+                        } else {
+                            sum += 1
+                        }
+                    } else {
+                        sum += 11
+                    }
+                }
+            } else {
+                sum += card.blackjackValue
+            }
+        }
+        return sum
+    }
+
+    fun chooseGoldValue(cardId: String, value: Int) {
+        playerGoldChoices = playerGoldChoices + (cardId to value)
+    }
+
     private fun dealCards() {
-        val list = PLAYERS_DECK.shuffled()
-        playerCard = list[0]
-        opponentCard = list[1]
+        val pDeckRaw = getDeckForId(playerSelectedDeckId ?: 1).shuffled()
+        val oDeckRaw = getDeckForId(cpuSelectedDeckId ?: 2).shuffled()
+
+        playerDeck = pDeckRaw
+        opponentDeck = oDeckRaw
+
+        // Draw first card for both (Rodada 1)
+        playerHand = listOf(pDeckRaw[0])
+        opponentHand = listOf(oDeckRaw[0])
+
+        playerCard = pDeckRaw[0]
+        opponentCard = oDeckRaw[0]
+
+        playerGoldChoices = emptyMap()
+        opponentGoldChoices = emptyMap()
+
+        currentBlackjackRound = 1
+        isOpponentHandRevealed = false
+        hasPlayerStood = false
+        hasOpponentStood = false
+        matchResult = null
+
+        globalSpeakTts?.invoke("Rodada 1!")
+
+        viewModelScope.launch {
+            delay(2500)
+            advanceToRound2()
+        }
+    }
+
+    fun advanceToRound2() {
+        if (playerDeck.size < 2 || opponentDeck.size < 2) return
+        currentBlackjackRound = 2
+        playerHand = playerHand + playerDeck[1]
+        opponentHand = opponentHand + opponentDeck[1]
+
+        playerCard = playerDeck[1]
+        opponentCard = opponentDeck[1]
+
+        globalSpeakTts?.invoke("Rodada 2!")
+
+        viewModelScope.launch {
+            delay(2500)
+            currentBlackjackRound = 3
+            globalSpeakTts?.invoke("Escolha entre pedir carta ou parar.")
+        }
+    }
+
+    fun playerChooseHit() {
+        if (hasPlayerStood) return
+        if (playerDeck.size >= 3) {
+            playerHand = playerHand + playerDeck[2]
+            playerCard = playerDeck[2]
+        }
+        hasPlayerStood = true
+        globalSpeakTts?.invoke("Você pediu carta!")
+        cpuDecide()
+    }
+
+    fun playerChooseStand() {
+        if (hasPlayerStood) return
+        hasPlayerStood = true
+        globalSpeakTts?.invoke("Você parou!")
+        cpuDecide()
+    }
+
+    private fun cpuDecide() {
+        viewModelScope.launch {
+            delay(1200)
+            val cpuSum = getHandSum(opponentHand, opponentGoldChoices, isCpu = true)
+            if (cpuSum < 17 && opponentDeck.size >= 3) {
+                opponentHand = opponentHand + opponentDeck[2]
+                opponentCard = opponentDeck[2]
+                globalSpeakTts?.invoke("O oponente pediu carta!")
+            } else {
+                globalSpeakTts?.invoke("O oponente parou!")
+            }
+            hasOpponentStood = true
+            delay(1200)
+            revealAndCalculateWinner()
+        }
+    }
+
+    fun revealAndCalculateWinner() {
+        isOpponentHandRevealed = true
+        val pSum = getHandSum(playerHand, playerGoldChoices, isCpu = false)
+        val oSum = getHandSum(opponentHand, opponentGoldChoices, isCpu = true)
+
+        val winner = when {
+            pSum > 21 && oSum > 21 -> {
+                if (pSum < oSum) MatchResult.WIN else if (pSum > oSum) MatchResult.LOSS else MatchResult.TIE
+            }
+            pSum > 21 -> MatchResult.LOSS
+            oSum > 21 -> MatchResult.WIN
+            pSum == oSum -> MatchResult.TIE
+            pSum > oSum -> MatchResult.WIN
+            else -> MatchResult.LOSS
+        }
+
+        matchResult = winner
+
+        viewModelScope.launch {
+            if (winner == MatchResult.WIN) {
+                matchesWonByPlayer += 1
+                consecutiveWins += 1
+                playerRoundWins += 1
+            } else if (winner == MatchResult.LOSS) {
+                matchesWonByCpu += 1
+                consecutiveWins = 0
+                opponentRoundWins += 1
+            } else {
+                delay(3000)
+                dealCards()
+                return@launch
+            }
+
+            if (matchesWonByPlayer >= 2) {
+                repository.recordWin()
+                delay(1200)
+                globalSpeakTts?.invoke("Parabéns, você venceu o confronto!")
+                delay(1800)
+                isMatchFinished = true
+            } else if (matchesWonByCpu >= 2) {
+                repository.recordLoss()
+                delay(1200)
+                globalSpeakTts?.invoke("Fim de jogo, o oponente venceu o confronto.")
+                delay(1800)
+                isMatchFinished = true
+            } else {
+                delay(4000)
+                dealCards()
+            }
+        }
     }
 
     fun selectStat(statName: String, playerValue: Int, opponentValue: Int) {
-        if (isComparing) return
-        if (playMode == PlayMode.ONLINE_GAME) {
-            if (!isMyTurn) return
-            rtdbRoomRef?.child("selectedStat")?.setValue(statName)
-        } else {
-            selectedStatName = statName
-            isComparing = true
-
-            viewModelScope.launch {
-                delay(1500)
-
-                val result = when {
-                    statName == "TIMEOUT" -> MatchResult.LOSS
-                    playerCard.isGold && !opponentCard.isGold -> MatchResult.WIN
-                    opponentCard.isGold && !playerCard.isGold -> MatchResult.LOSS
-                    playerValue > opponentValue -> MatchResult.WIN
-                    playerValue < opponentValue -> MatchResult.LOSS
-                    else -> if (Random.nextBoolean()) MatchResult.WIN else MatchResult.LOSS
-                }
-                matchResult = result
-
-                if (result == MatchResult.WIN) {
-                    repository.recordWin()
-                    playerRoundWins += 1
-                    consecutiveWins += 1
-                } else {
-                    repository.recordLoss()
-                    opponentRoundWins += 1
-                    consecutiveWins = 0
-                }
-
-                delay(2800)
-                isComparing = false
-                matchResult = null
-                selectedStatName = ""
-                if (playerRoundWins < 3 && opponentRoundWins < 3) {
-                    dealCards()
-                }
-            }
-        }
+        // No-op for blackjack rules
     }
 
     fun saveUsername(name: String) {
@@ -945,6 +1117,16 @@ class MainActivity : ComponentActivity() {
         val database = AppDatabase.getDatabase(applicationContext)
         val repository = GameRepository(database.userDao())
 
+        var ttsEngine: android.speech.tts.TextToSpeech? = null
+        ttsEngine = android.speech.tts.TextToSpeech(this) { status ->
+            if (status == android.speech.tts.TextToSpeech.SUCCESS) {
+                ttsEngine?.language = java.util.Locale("pt", "BR")
+                globalSpeakTts = { text ->
+                    ttsEngine?.speak(text, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, null)
+                }
+            }
+        }
+
         setContent {
             val gameViewModel: GameViewModel = viewModel(factory = GameViewModelFactory(repository))
             val profileState by gameViewModel.userProfile.collectAsState()
@@ -964,8 +1146,25 @@ class MainActivity : ComponentActivity() {
             CopaTrunfoTheme {
                 if (showHomeScreen) {
                     HomeScreen(onStartGame = {
-                        playRefereeWhistle()
-                        globalSpeakTts?.invoke("Começa o jogo!")
+                        // Play sound in a separate fully isolated thread
+                        Thread {
+                            try {
+                                playRefereeWhistle()
+                            } catch (e: Throwable) {
+                                e.printStackTrace()
+                            }
+                        }.start()
+
+                        // Run TTS narration in a separate fully isolated thread
+                        Thread {
+                            try {
+                                globalSpeakTts?.invoke("Começa o jogo!")
+                            } catch (e: Throwable) {
+                                e.printStackTrace()
+                            }
+                        }.start()
+
+                        // Transition the UI immediately
                         showHomeScreen = false
                         gameViewModel.startIntro()
                     })
@@ -1447,6 +1646,18 @@ fun HomeScreen(onStartGame: () -> Unit) {
 @Composable
 fun JogarScreen(viewModel: GameViewModel, profile: UserProfile) {
     val context = LocalContext.current
+    if (viewModel.isMatchFinished) {
+        MatchEndScreen(
+            playerScore = viewModel.matchesWonByPlayer,
+            cpuScore = viewModel.matchesWonByCpu,
+            playerWon = viewModel.matchesWonByPlayer >= 2,
+            playerName = profile.username,
+            onPlayAgain = { viewModel.handlePlayAgain() },
+            onBackToMenu = { viewModel.handleBackToMenu() }
+        )
+        return
+    }
+
     if (viewModel.isIntroActive) {
         AnimatedContent(
             targetState = viewModel.introStep,
@@ -1919,6 +2130,243 @@ fun ConfettiRain() {
 }
 
 @Composable
+fun WorldCupTrophyCanvas(modifier: Modifier = Modifier) {
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+
+        val goldPrimary = Color(0xFFFACC15)
+        val goldDark = Color(0xFFCA8A04)
+        val greenRing = Color(0xFF15803D)
+
+        // 1. Base of the trophy
+        val baseW = w * 0.45f
+        val baseH = h * 0.15f
+        val baseX = (w - baseW) / 2f
+        val baseY = h * 0.70f
+
+        drawRoundRect(
+            color = Color(0xFF1E293B),
+            topLeft = androidx.compose.ui.geometry.Offset(baseX - 4f, baseY + 6f),
+            size = androidx.compose.ui.geometry.Size(baseW + 8f, baseH),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(6f, 6f)
+        )
+
+        drawRoundRect(
+            color = goldDark,
+            topLeft = androidx.compose.ui.geometry.Offset(baseX, baseY),
+            size = androidx.compose.ui.geometry.Size(baseW, baseH),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
+        )
+
+        // Green horizontal bands
+        val bandH = baseH * 0.20f
+        drawRect(
+            color = greenRing,
+            topLeft = androidx.compose.ui.geometry.Offset(baseX, baseY + baseH * 0.25f),
+            size = androidx.compose.ui.geometry.Size(baseW, bandH)
+        )
+        drawRect(
+            color = greenRing,
+            topLeft = androidx.compose.ui.geometry.Offset(baseX, baseY + baseH * 0.65f),
+            size = androidx.compose.ui.geometry.Size(baseW, bandH)
+        )
+
+        // 2. Trunk/stem of trophy
+        val stemW = w * 0.22f
+        val stemH = h * 0.35f
+        val stemX = (w - stemW) / 2f
+        val stemY = h * 0.38f
+
+        drawRoundRect(
+            color = goldPrimary,
+            topLeft = androidx.compose.ui.geometry.Offset(stemX, stemY),
+            size = androidx.compose.ui.geometry.Size(stemW, stemH),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(10f, 10f)
+        )
+
+        drawArc(
+            color = goldDark,
+            startAngle = 180f,
+            sweepAngle = 180f,
+            useCenter = false,
+            topLeft = androidx.compose.ui.geometry.Offset(w * 0.25f, h * 0.45f),
+            size = androidx.compose.ui.geometry.Size(w * 0.5f, h * 0.2f),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 6f)
+        )
+
+        // 3. Globe at top
+        val globeSize = w * 0.42f
+        val globeX = (w - globeSize) / 2f
+        val globeY = h * 0.22f
+
+        drawCircle(
+            color = goldDark,
+            radius = globeSize / 2f,
+            center = androidx.compose.ui.geometry.Offset(w / 2f, globeY + globeSize / 2f)
+        )
+        drawCircle(
+            color = goldPrimary,
+            radius = globeSize * 0.42f / 2f,
+            center = androidx.compose.ui.geometry.Offset(w / 2f - 4f, globeY + globeSize / 2f - 4f)
+        )
+        drawArc(
+            color = goldDark,
+            startAngle = 0f,
+            sweepAngle = 360f,
+            useCenter = false,
+            topLeft = androidx.compose.ui.geometry.Offset(globeX + 4f, globeY + 4f),
+            size = androidx.compose.ui.geometry.Size(globeSize - 8f, globeSize - 8f),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f)
+        )
+    }
+}
+
+@Composable
+fun BlackjackCardBack(modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier
+            .border(
+                BorderStroke(2.5.dp, Brush.verticalGradient(listOf(Color(0xFFFEF08A), Color(0xFFD97706)))),
+                RoundedCornerShape(12.dp)
+            ),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF081425)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize().padding(10.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            WorldCupTrophyCanvas(modifier = Modifier.fillMaxSize(0.85f))
+        }
+    }
+}
+
+@Composable
+fun BlackjackCardFace(
+    card: PlayerCard,
+    modifier: Modifier = Modifier,
+    chosenValue: Int? = null
+) {
+    val displayValue = if (card.isGold) {
+        chosenValue?.toString() ?: "★"
+    } else {
+        card.blackjackValue.toString()
+    }
+
+    Card(
+        modifier = modifier
+            .border(
+                if (card.isGold) {
+                    BorderStroke(2.5.dp, Brush.verticalGradient(listOf(Color(0xFFFEF08A), Color(0xFFD97706))))
+                } else {
+                    BorderStroke(1.5.dp, Color(0xFF1F2A3C))
+                },
+                RoundedCornerShape(12.dp)
+            ),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF152031)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            AsyncImage(
+                model = card.imageUrl,
+                contentDescription = card.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(12.dp))
+                    .blur(if (card.isGold) 0.dp else 1.dp)
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.Black.copy(alpha = 0.3f),
+                                Color.Black.copy(alpha = 0.75f)
+                            )
+                        )
+                    )
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopStart)
+                    .padding(6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .background(
+                            if (card.isGold) Color(0xFF3C2F00) else Color(0xFF1F2A3C),
+                            RoundedCornerShape(3.dp)
+                        )
+                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                ) {
+                    Text(
+                        text = card.position,
+                        color = if (card.isGold) Color(0xFFFEDF00) else Color(0xFFD8E3FB),
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 8.sp
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(6.dp)
+                    .size(24.dp)
+                    .background(
+                        if (card.isGold) Color(0xFFFEDF00) else Color(0xFF1F2A3C),
+                        CircleShape
+                    )
+                    .border(
+                        1.dp,
+                        if (card.isGold) Color(0xFF3C2F00) else Color(0xFFFACC15).copy(alpha = 0.5f),
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = displayValue,
+                    color = if (card.isGold) Color(0xFF3C2F00) else Color.White,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 11.sp
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(6.dp),
+                verticalArrangement = Arrangement.spacedBy(1.dp)
+            ) {
+                Text(
+                    text = card.name.uppercase(),
+                    color = if (card.isGold) Color(0xFFFEDF00) else Color.White,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 9.sp,
+                    maxLines = 1,
+                    textAlign = TextAlign.Start
+                )
+                Text(
+                    text = card.country,
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 8.sp,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun CardBattleScreen(
     viewModel: GameViewModel,
     playerCard: PlayerCard,
@@ -2169,69 +2617,272 @@ fun CardBattleScreen(
                 )
             }
 
-            // Scrollable column just in case sizes are cramped on older devices
+            // Blackjack Arena Layout
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(vertical = 12.dp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Player Card Section
-                    item {
-                        InteractivePlayerCard(
-                            card = playerCard,
-                            isMyTurn = isMyTurn,
-                            isComparing = viewModel.isComparing,
-                            consecutiveWins = viewModel.consecutiveWins,
-                            onSelectStat = { stat, value ->
-                                val oppValue = when (stat) {
-                                    "ATAQUE" -> opponentCard.attack
-                                    "DEFESA" -> opponentCard.defense
-                                    "TÉCNICA" -> opponentCard.technique
-                                    "ALTURA" -> opponentCard.heightInCm
-                                    "VELOCIDADE" -> opponentCard.speed
-                                    else -> opponentCard.technique
-                                }
-                                onSelectStat(stat, value, oppValue)
-                            }
+                    val pSum = viewModel.getHandSum(viewModel.playerHand, viewModel.playerGoldChoices, isCpu = false)
+                    val oSum = viewModel.getHandSum(viewModel.opponentHand, viewModel.opponentGoldChoices, isCpu = true)
+
+                    Row(
+                        modifier = Modifier
+                            .background(Color(0xFF101B2B), RoundedCornerShape(8.dp))
+                            .border(1.dp, Color(0xFF1F2A3C), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "VOCÊ",
+                            color = Color(0xFF4ADE80),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(
+                            text = "${viewModel.matchesWonByPlayer}",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(
+                            text = "x",
+                            color = Color(0xFFFACC15),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "${viewModel.matchesWonByCpu}",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(
+                            text = "CPU",
+                            color = Color(0xFFF87171),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black
                         )
                     }
 
-                    // VS circle in between
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(),
-                            contentAlignment = Alignment.Center
+                    // Round indicator banner
+                    Box(
+                        modifier = Modifier
+                            .background(Color(0xFF1E293B), RoundedCornerShape(20.dp))
+                            .border(1.dp, Color(0xFFFACC15).copy(alpha = 0.5f), RoundedCornerShape(20.dp))
+                            .padding(horizontal = 16.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = if (viewModel.currentBlackjackRound <= 2) {
+                                "RODADA ${viewModel.currentBlackjackRound} / 3"
+                            } else {
+                                "RODADA DE DECISÃO"
+                            },
+                            color = Color(0xFFFACC15),
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 12.sp,
+                            letterSpacing = 1.sp
+                        )
+                    }
+
+                    // 1. OPPONENT HAND SECTION
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            Text(
+                                "CARTAS DO OPONENTE",
+                                color = Color(0xFFD8E3FB).copy(alpha = 0.7f),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp
+                            )
                             Box(
                                 modifier = Modifier
-                                    .size(48.dp)
-                                    .background(Color(0xFFFACC15), CircleShape)
-                                    .border(2.dp, Color(0xFF081425), CircleShape),
-                                contentAlignment = Alignment.Center
+                                    .background(Color(0xFF101B2B), RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
                                 Text(
-                                    "VS",
-                                    color = Color(0xFF3C2F00),
-                                    fontSize = 16.sp,
+                                    "Soma: " + if (viewModel.isOpponentHandRevealed) "$oSum" else "?",
+                                    color = Color(0xFFF97316),
                                     fontWeight = FontWeight.Black,
-                                    fontStyle = FontStyle.Italic
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        ) {
+                            viewModel.opponentHand.forEachIndexed { index, card ->
+                                val cardModifier = Modifier.width(95.dp).height(135.dp)
+                                if (!viewModel.isOpponentHandRevealed) {
+                                    BlackjackCardBack(modifier = cardModifier)
+                                } else {
+                                    val chosen = viewModel.opponentGoldChoices[card.id]
+                                    BlackjackCardFace(
+                                        card = card,
+                                        modifier = cardModifier,
+                                        chosenValue = chosen
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Dividing Line with 21 badge
+                    Row(
+                        modifier = Modifier.fillMaxWidth(0.8f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(modifier = Modifier.weight(1f).height(1.dp).background(Color(0xFF1F2A3C)))
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 12.dp)
+                                .size(32.dp)
+                                .background(Color(0xFFFACC15), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "21",
+                                color = Color(0xFF3C2F00),
+                                fontWeight = FontWeight.Black,
+                                fontSize = 14.sp
+                            )
+                        }
+                        Box(modifier = Modifier.weight(1f).height(1.dp).background(Color(0xFF1F2A3C)))
+                    }
+
+                    // 2. PLAYER HAND SECTION
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                "SUAS CARTAS",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .background(Color(0xFF101B2B), RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    "Soma: $pSum",
+                                    color = Color(0xFF22C55E),
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        ) {
+                            viewModel.playerHand.forEachIndexed { index, card ->
+                                val cardModifier = Modifier.width(95.dp).height(135.dp)
+                                val chosen = viewModel.playerGoldChoices[card.id]
+                                BlackjackCardFace(
+                                    card = card,
+                                    modifier = cardModifier,
+                                    chosenValue = chosen
                                 )
                             }
                         }
                     }
 
-                    // Opponent Card Section
-                    item {
-                        OpponentCardPlaceholder(
-                            card = opponentCard,
-                            opponentLabel = opponentName
+                    // Decision actions block (Hit / Stand)
+                    if (viewModel.currentBlackjackRound == 3) {
+                        if (!viewModel.hasPlayerStood) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp)
+                            ) {
+                                Button(
+                                    onClick = { viewModel.playerChooseHit() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF22C55E)),
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier
+                                        .weight(1.5f)
+                                        .height(44.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = "Pedir Carta",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp).padding(end = 4.dp)
+                                    )
+                                    Text("PEDIR CARTA", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                }
+
+                                Button(
+                                    onClick = { viewModel.playerChooseStand() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier
+                                        .weight(1.5f)
+                                        .height(44.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Parar",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp).padding(end = 4.dp)
+                                    )
+                                    Text("PARAR (MANTER)", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                }
+                            }
+                        } else {
+                            Text(
+                                text = if (viewModel.matchResult == null) {
+                                    "AGUARDANDO OPONENTE..."
+                                } else {
+                                    when (viewModel.matchResult) {
+                                        MatchResult.WIN -> "🎉 VOCÊ VENCEU ESTE ROUND! 🎉"
+                                        MatchResult.LOSS -> "😔 OPONENTE VENCEU ESTE ROUND!"
+                                        MatchResult.TIE -> "🤝 EMPATE NESTE ROUND!"
+                                        else -> ""
+                                    }
+                                },
+                                color = when (viewModel.matchResult) {
+                                    MatchResult.WIN -> Color(0xFF4ADE80)
+                                    MatchResult.LOSS -> Color(0xFFF87171)
+                                    else -> Color(0xFFFACC15)
+                                },
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = "DISTRIBUINDO CARTAS...",
+                            color = Color(0xFF8A99AD),
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(top = 8.dp)
                         )
                     }
                 }
@@ -2298,6 +2949,81 @@ fun CardBattleScreen(
                     }
                 }
             }
+        }
+
+        val pendingGoldCard = viewModel.playerHand.firstOrNull { it.isGold && !viewModel.playerGoldChoices.containsKey(it.id) }
+        if (pendingGoldCard != null) {
+            AlertDialog(
+                onDismissRequest = {},
+                title = {
+                    Text(
+                        "ESCOLHA O VALOR DA LENDA",
+                        fontWeight = FontWeight.Black,
+                        fontSize = 18.sp,
+                        color = Color(0xFFFACC15),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                },
+                text = {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "Você jogou a lendária carta de ${pendingGoldCard.name}!\nEscolha o valor de Blackjack dela (1 a 11):",
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                (1..6).forEach { num ->
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .background(Color(0xFF1F2A3C), RoundedCornerShape(8.dp))
+                                            .border(1.dp, Color(0xFFFACC15), RoundedCornerShape(8.dp))
+                                            .clickable { viewModel.chooseGoldValue(pendingGoldCard.id, num) }
+                                            .padding(vertical = 10.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("$num", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    }
+                                }
+                            }
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                (7..11).forEach { num ->
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .background(Color(0xFF1F2A3C), RoundedCornerShape(8.dp))
+                                            .border(1.dp, Color(0xFFFACC15), RoundedCornerShape(8.dp))
+                                            .clickable { viewModel.chooseGoldValue(pendingGoldCard.id, num) }
+                                            .padding(vertical = 10.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("$num", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = {},
+                containerColor = Color(0xFF152031)
+            )
         }
 
         if (showConfetti) {
@@ -4098,4 +4824,193 @@ fun IntroReadyScreen(viewModel: GameViewModel) {
         }
     }
 }
+
+@Composable
+fun MatchEndScreen(
+    playerScore: Int,
+    cpuScore: Int,
+    playerWon: Boolean,
+    playerName: String,
+    onPlayAgain: () -> Unit,
+    onBackToMenu: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF081425))
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        if (playerWon) {
+            ConfettiRain()
+        }
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "FIM DE CONFRONTO",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFADB4CE),
+                letterSpacing = 2.sp,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Scoreboard Card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .padding(vertical = 16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF152031)),
+                border = BorderStroke(
+                    width = 2.dp,
+                    brush = Brush.verticalGradient(
+                        if (playerWon) {
+                            listOf(Color(0xFF22C55E), Color(0xFF15803D))
+                        } else {
+                            listOf(Color(0xFFEF4444), Color(0xFFB91C1C))
+                        }
+                    )
+                ),
+                shape = RoundedCornerShape(24.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(28.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = playerName.uppercase(),
+                        color = Color(0xFFADB4CE),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        letterSpacing = 1.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(24.dp)
+                    ) {
+                        // Player score
+                        Text(
+                            text = "$playerScore",
+                            fontSize = 64.sp,
+                            fontWeight = FontWeight.Black,
+                            color = if (playerWon) Color(0xFF22C55E) else Color.White
+                        )
+
+                        Text(
+                            text = "x",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFACC15)
+                        )
+
+                        // CPU score
+                        Text(
+                            text = "$cpuScore",
+                            fontSize = 64.sp,
+                            fontWeight = FontWeight.Black,
+                            color = if (!playerWon) Color(0xFFEF4444) else Color.White
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = "OPONENTE",
+                        color = Color(0xFFADB4CE),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        letterSpacing = 1.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Winner / Loser banner
+            Text(
+                text = if (playerWon) "VOCÊ VENCEU O CONFRONTO!" else "VOCÊ PERDEU O CONFRONTO",
+                color = if (playerWon) Color(0xFF22C55E) else Color(0xFFEF4444),
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 0.5.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+
+            val trophyAnimScale = rememberInfiniteTransition().animateFloat(
+                initialValue = 0.95f,
+                targetValue = 1.05f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1500, easing = FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse
+                )
+            )
+
+            if (playerWon) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Box(
+                    modifier = Modifier
+                        .graphicsLayer(
+                            scaleX = trophyAnimScale.value,
+                            scaleY = trophyAnimScale.value
+                        )
+                        .size(100.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    WorldCupTrophyCanvas(modifier = Modifier.fillMaxSize())
+                }
+            }
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            // Action Buttons
+            Button(
+                onClick = onPlayAgain,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFACC15)),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .height(52.dp)
+                    .testTag("play_again_button")
+            ) {
+                Text(
+                    text = "JOGAR NOVAMENTE",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color(0xFF081425)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Button(
+                onClick = onBackToMenu,
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.5.dp, Color(0xFF1F2A3C)),
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .height(52.dp)
+                    .testTag("back_to_menu_button")
+            ) {
+                Text(
+                    text = "VOLTAR AO MENU",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFD8E3FB)
+                )
+            }
+        }
+    }
+}
+
 
